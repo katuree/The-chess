@@ -1,0 +1,9 @@
+{
+  "name": "the-chess",
+  "version": "1.0.0",
+  "description": "The Chess - a browser-based four-player chess game.",
+  "private": false,
+  "scripts": {
+    "test": "node scripts/verify.js"
+  }
+}
