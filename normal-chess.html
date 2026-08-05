@@ -8,6 +8,17 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { min-height:100vh; padding:18px; font-family:"Segoe UI",Arial,sans-serif; color:#f5f7ff; background:radial-gradient(circle at top,#1b3159 0%,#111a31 48%,#081020 100%); }
     .game-container { max-width:1180px; margin:0 auto; }
+    .hidden { display:none !important; }
+    .mode-menu { width:min(980px,100%); margin:0 auto; min-height:calc(100vh - 36px); display:grid; place-items:center; text-align:center; }
+    .menu-panel { width:100%; padding:34px; border:1px solid rgba(255,255,255,.16); border-radius:28px; background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.05)); box-shadow:0 24px 75px rgba(0,0,0,.42); }
+    .menu-subtitle { color:#c7d2ee; font-size:1.1rem; margin:10px 0 28px; }
+    .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+    .mode-card { min-height:260px; border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:24px; background:rgba(0,0,0,.18); color:#fff; cursor:pointer; text-align:left; transition:transform .16s ease,border-color .16s ease; }
+    .mode-card:hover { transform:translateY(-5px); border-color:#ffe45c; }
+    .mode-card h2 { color:#ffe45c; margin-bottom:10px; font-size:1.9rem; }
+    .mode-card p { color:#dce6ff; line-height:1.5; font-weight:700; }
+    .mode-card .play-now { display:block; margin-top:20px; text-align:center; padding:13px 16px; border-radius:12px; background:linear-gradient(135deg,#16b984,#08735f); font-weight:900; }
+    .mode-card.multi .play-now { background:linear-gradient(135deg,#376eff,#1944b8); }
     .top-nav { margin-bottom:14px; }
     .top-nav a { color:#ffe45c; text-decoration:none; font-weight:900; }
     .game-header { text-align:center; margin-bottom:16px; }
@@ -69,12 +80,31 @@
     .btn { border:0; border-radius:10px; padding:12px 16px; color:#fff; font-weight:900; cursor:pointer; background:linear-gradient(135deg,#376eff,#1944b8); }
     #undo-btn { background:linear-gradient(135deg,#ff4b4b,#b91f2b); } #sound-btn { background:linear-gradient(135deg,#7d5cff,#4729b8); }
     .controls { display:grid; gap:10px; }
-    @media(max-width:960px){ .game-main{flex-direction:column;align-items:center}.sidebar{width:min(720px,100%)}.board{min-width:min(94vw,560px);min-height:min(94vw,560px);width:min(94vw,720px);height:min(94vw,720px)} }
+    @media(max-width:960px){ .game-main{flex-direction:column;align-items:center}.sidebar{width:min(720px,100%)}.board{min-width:min(94vw,560px);min-height:min(94vw,560px);width:min(94vw,720px);height:min(94vw,720px)} .board-container{padding:10px}.mode-grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <div class="game-container">
-    <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./four-player.html">4 Player Chess</a></nav>
+  <section id="normal-mode-menu" class="mode-menu">
+    <div class="menu-panel">
+      <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./four-player.html">4 Player Chess</a></nav>
+      <h1>Normal Chess</h1>
+      <p class="menu-subtitle">Choose how you want to play before the board opens.</p>
+      <div class="mode-grid">
+        <button id="single-player-btn" class="mode-card single" type="button">
+          <h2>Single Player</h2>
+          <p>You play White. The computer plays Black with a short thinking delay after your move.</p>
+          <span class="play-now">Start Single Player</span>
+        </button>
+        <button id="multi-player-btn" class="mode-card multi" type="button">
+          <h2>Multiple Player</h2>
+          <p>Two players share the same device. White and Black take turns locally.</p>
+          <span class="play-now">Start Multiple Player</span>
+        </button>
+      </div>
+    </div>
+  </section>
+  <div id="normal-game-screen" class="game-container hidden">
+    <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./four-player.html">4 Player Chess</a> · <a href="#" id="change-mode-link">Change Mode</a></nav>
     <header class="game-header"><h1>Normal Chess</h1><div class="turn-indicator"><span id="current-player-name">White</span>'s Turn <span id="turn-counter">Move: 1</span></div></header>
     <main class="game-main">
       <div class="board-container"><div id="normal-board" class="board" role="grid" aria-label="Normal chess board"></div></div>
@@ -144,15 +174,65 @@
       undo(){ const s=this.undoStack?.pop(); if(!s) return; this.board=s.board; this.turn=s.turn; this.log=s.log; this.captured=s.captured; this.lastMove=s.lastMove; this.gameOver=s.gameOver; this.checkPlayer=s.checkPlayer; this.selected=null; this.targets=[]; }
       updateCheck(){ const opponent=this.current; this.checkPlayer=this.inCheck(opponent)?opponent:null; if(this.checkPlayer && this.legalMovesFor(opponent).length===0) this.gameOver=true; }
     }
-    let soundEnabled=true, audioCtx=null; const game=new NormalChessGame(); window.NormalChess={game,NormalChessGame,render};
+    let soundEnabled=true, audioCtx=null;
+    let normalMode=null;
+    let aiThinking=false;
+    const NORMAL_AI_DELAY=700;
+    const PIECE_VALUES={pawn:100,knight:320,bishop:330,rook:500,queen:900,king:20000};
+    const game=new NormalChessGame(); window.NormalChess={game,NormalChessGame,render,startNormalGame,chooseNormalAiMove};
     function coord(r,c){ return `${'abcdefgh'[c]}${8-r}`; }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
     function unlockAudio(){ if(!soundEnabled) return null; const C=window.AudioContext||window.webkitAudioContext; if(!C) return null; if(!audioCtx) audioCtx=new C(); if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
     function tone(f,d=.08,type='sine'){ const ctx=unlockAudio(); if(!ctx) return; const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(.0001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(.05,ctx.currentTime+.01); g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+d); o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+d+.03); }
     function playSound(kind='move'){ if(!soundEnabled) return; if(kind==='capture'){tone(250,.1,'square'); setTimeout(()=>tone(170,.12,'triangle'),70);} else if(kind==='check'){tone(640,.1,'sawtooth'); setTimeout(()=>tone(780,.11,'sawtooth'),90);} else tone(380,.075,'sine'); }
     function render(){ const board=document.getElementById('normal-board'); board.innerHTML=''; for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const sq=document.createElement('div'); sq.className=`square ${(r+c)%2?'dark':'light'}`; sq.dataset.label=(c===0?8-r:'')+(r===7?'abcdefgh'[c]:''); const p=game.piece(r,c); if(p){ const span=document.createElement('span'); span.className=`chess-piece piece-${p.player} piece-${p.type}`; span.innerHTML=iconFor(p.type); span.title=`${p.player} ${p.type}`; sq.appendChild(span); } if(game.selected&&game.selected[0]===r&&game.selected[1]===c) sq.classList.add('selected'); if(game.targets.some(([tr,tc])=>tr===r&&tc===c)) sq.classList.add(game.piece(r,c)?'capture':'target'); if(game.lastMove&&(game.lastMove.from[0]===r&&game.lastMove.from[1]===c||game.lastMove.to[0]===r&&game.lastMove.to[1]===c)) sq.classList.add('last'); if(p&&p.type==='king'&&game.checkPlayer===p.player) sq.classList.add('check'); sq.addEventListener('click',()=>clickSquare(r,c)); board.appendChild(sq); }
-      const name=document.getElementById('current-player-name'); name.textContent=cap(game.current); name.className=game.current; document.getElementById('turn-counter').textContent=`Move: ${Math.floor(game.turn/2)+1}`; document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span class="chess-piece piece-${p.player}" style="display:inline-grid;width:28px;height:28px" title="${p.player} ${p.type}">${iconFor(p.type)}</span>`).join(''); document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div>${i+1}. ${cap(m.player)} ${m.text}</div>`).join(''); document.getElementById('game-status').textContent=game.gameOver?`Checkmate! ${cap(game.current==='white'?'black':'white')} wins.`:game.checkPlayer?`Check! ${cap(game.checkPlayer)} king is under attack.`:'Game in progress...'; document.getElementById('undo-btn').disabled=!(game.undoStack&&game.undoStack.length); document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off'; }
-    function clickSquare(r,c){ unlockAudio(); if(game.gameOver) return; const p=game.piece(r,c); if(game.selected){ const [sr,sc]=game.selected; if(game.targets.some(([tr,tc])=>tr===r&&tc===c)){ game.move(sr,sc,r,c); game.selected=null; game.targets=[]; render(); return; } game.selected=null; game.targets=[]; } if(p&&p.player===game.current){ game.selected=[r,c]; game.targets=game.moves(r,c); } render(); }
+      const name=document.getElementById('current-player-name'); name.textContent=cap(game.current); name.className=game.current; document.getElementById('turn-counter').textContent=`Move: ${Math.floor(game.turn/2)+1}`; document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span class="chess-piece piece-${p.player}" style="display:inline-grid;width:28px;height:28px" title="${p.player} ${p.type}">${iconFor(p.type)}</span>`).join(''); document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div>${i+1}. ${cap(m.player)} ${m.text}</div>`).join(''); document.getElementById('game-status').textContent=game.gameOver?`Checkmate! ${cap(game.current==='white'?'black':'white')} wins.`:game.checkPlayer?`Check! ${cap(game.checkPlayer)} king is under attack.${normalMode==='single'?' You are White; AI is Black.':''}`:`Game in progress...${normalMode==='single'?' You are White; AI is Black.':''}`; document.getElementById('undo-btn').disabled=!(game.undoStack&&game.undoStack.length)||aiThinking; document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off'; scheduleNormalAiTurn(); }
+    function clickSquare(r,c){ unlockAudio(); if(game.gameOver||aiThinking||isNormalAiTurn()) return; const p=game.piece(r,c); if(game.selected){ const [sr,sc]=game.selected; if(game.targets.some(([tr,tc])=>tr===r&&tc===c)){ game.move(sr,sc,r,c); game.selected=null; game.targets=[]; render(); return; } game.selected=null; game.targets=[]; } if(p&&p.player===game.current){ game.selected=[r,c]; game.targets=game.moves(r,c); } render(); }
+    function isNormalAiTurn(){ return normalMode==='single' && game.current==='black' && !game.gameOver; }
+    function chooseNormalAiMove(){
+      const moves=game.legalMovesFor('black');
+      if(!moves.length) return null;
+      let best=-Infinity, bestMoves=[];
+      for(const move of moves){
+        const [tr,tc]=move.to;
+        const captured=game.piece(tr,tc);
+        const center=Math.abs(tr-3.5)+Math.abs(tc-3.5);
+        let score=(captured?PIECE_VALUES[captured.type]||0:0)-center+Math.random()*6;
+        if(score>best){ best=score; bestMoves=[move]; }
+        else if(Math.abs(score-best)<.001) bestMoves.push(move);
+      }
+      return bestMoves[Math.floor(Math.random()*bestMoves.length)];
+    }
+    function performNormalAiTurn(){
+      if(!isNormalAiTurn()){ aiThinking=false; return; }
+      const move=chooseNormalAiMove();
+      aiThinking=false;
+      if(move) game.move(move.from[0],move.from[1],move.to[0],move.to[1]);
+      render();
+    }
+    function scheduleNormalAiTurn(){
+      if(!isNormalAiTurn()||aiThinking) return;
+      aiThinking=true;
+      setTimeout(performNormalAiTurn,NORMAL_AI_DELAY);
+    }
+    function startNormalGame(mode){
+      normalMode=mode;
+      aiThinking=false;
+      game.newGame();
+      document.getElementById('normal-mode-menu').classList.add('hidden');
+      document.getElementById('normal-game-screen').classList.remove('hidden');
+      render();
+    }
+    function showNormalModeMenu(e){
+      e?.preventDefault();
+      aiThinking=false;
+      normalMode=null;
+      document.getElementById('normal-game-screen').classList.add('hidden');
+      document.getElementById('normal-mode-menu').classList.remove('hidden');
+    }
+    document.getElementById('single-player-btn').addEventListener('click',()=>startNormalGame('single'));
+    document.getElementById('multi-player-btn').addEventListener('click',()=>startNormalGame('multi'));
+    document.getElementById('change-mode-link').addEventListener('click',showNormalModeMenu);
     document.getElementById('new-game-btn').addEventListener('click',()=>{ game.newGame(); render(); });
     document.getElementById('undo-btn').addEventListener('click',()=>{ game.undo(); render(); });
     document.getElementById('sound-btn').addEventListener('click',()=>{ soundEnabled=!soundEnabled; if(soundEnabled){ unlockAudio(); playSound('move'); } render(); });
