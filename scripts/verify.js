@@ -21,6 +21,9 @@ assert(!html.includes("return 'green-zone'"), 'Squares near green pieces should 
 assert(!html.includes("return 'yellow-zone'"), 'Squares near yellow pieces should use the normal chess pattern');
 assert(!html.includes("return 'red-zone'"), 'Squares near red pieces should use the normal chess pattern');
 assert(!html.includes("return 'blue-zone'"), 'Squares near blue pieces should use the normal chess pattern');
+assert(html.includes('radial-gradient(circle at 32% 24%'), 'High-quality piece styling should include glossy radial highlights');
+assert(html.includes('color-mix(in srgb'), 'High-quality piece styling should include blended 3D colors');
+assert(html.includes('.chess-piece::after'), 'High-quality piece styling should include shine overlay');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
@@ -122,6 +125,8 @@ const requiredSnippets = [
   'eliminated = new Set()',
   'advanceTurn()',
   'eliminated-piece',
+  'className=`chess-piece piece-${p.player} piece-${p.type}`',
+  'captured-piece piece-${p.player}',
   'is disqualified',
   'status-check',
   'status-mate',

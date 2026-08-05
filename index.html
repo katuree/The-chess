@@ -50,14 +50,67 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: clamp(1.55rem, 3.2vw, 2.35rem);
-      font-family: "Segoe UI Symbol", "Noto Sans Symbols", "DejaVu Sans", serif;
-      font-weight: 900;
-      line-height: 1;
       user-select: none;
       cursor: pointer;
       border: 1px solid rgba(255,255,255,.28);
-      text-shadow: 0 2px 5px rgba(0,0,0,.75), 0 0 8px currentColor;
+      position: relative;
+      overflow: hidden;
+    }
+    .chess-piece {
+      width: 86%;
+      height: 86%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      z-index: 1;
+      border-radius: 18px;
+      font-size: clamp(1.65rem, 3.35vw, 2.45rem);
+      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans", serif;
+      font-weight: 900;
+      line-height: 1;
+      color: #fff9e8;
+      background:
+        radial-gradient(circle at 32% 24%, rgba(255,255,255,.55), transparent 22%),
+        linear-gradient(145deg, color-mix(in srgb, var(--piece-bright) 72%, #ffffff 18%), var(--piece-mid) 50%, var(--piece-deep));
+      border: 1px solid color-mix(in srgb, var(--piece-bright) 72%, #ffffff 28%);
+      box-shadow:
+        inset 0 2px 4px rgba(255,255,255,.55),
+        inset 0 -6px 12px rgba(0,0,0,.35),
+        0 7px 10px rgba(0,0,0,.34),
+        0 0 13px color-mix(in srgb, var(--piece-bright) 52%, transparent);
+      text-shadow:
+        0 1px 0 rgba(255,255,255,.35),
+        0 2px 0 rgba(0,0,0,.32),
+        0 4px 7px rgba(0,0,0,.68),
+        0 0 10px color-mix(in srgb, var(--piece-bright) 86%, transparent);
+      transform: translateY(-1px);
+    }
+    .chess-piece::after {
+      content: "";
+      position: absolute;
+      inset: 8% 13% auto 13%;
+      height: 30%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,.52), rgba(255,255,255,0));
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .piece-yellow { --piece-bright:#ffe96a; --piece-mid:#ffc400; --piece-deep:#9b6c00; }
+    .piece-green { --piece-bright:#65f59a; --piece-mid:#24c95d; --piece-deep:#096d33; }
+    .piece-red { --piece-bright:#ff8585; --piece-mid:#ff4f4f; --piece-deep:#8f151f; }
+    .piece-blue { --piece-bright:#9fc2ff; --piece-mid:#5d92ff; --piece-deep:#1846aa; }
+    .captured-piece {
+      display: inline-grid;
+      place-items: center;
+      width: 1.55em;
+      height: 1.55em;
+      margin: 1px;
+      border-radius: 9px;
+      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans", serif;
+      font-weight: 900;
+      color: #fff9e8;
+      background: linear-gradient(145deg, var(--piece-mid), var(--piece-deep));
+      box-shadow: inset 0 1px 3px rgba(255,255,255,.4), 0 2px 5px rgba(0,0,0,.28);
     }
     .inactive { visibility: hidden; pointer-events: none; background: transparent; border-color: transparent; cursor: default; }
     .core.light { background: #35415d; }
@@ -67,7 +120,7 @@
     .capture { outline: 4px solid #ffef63; outline-offset: -4px; }
     .last { box-shadow: inset 0 0 0 4px rgba(255,255,255,.35); }
     .check { outline: 5px solid #ff2f2f; outline-offset: -5px; animation: pulse-check .8s infinite alternate; }
-    .eliminated-piece { color: #8f96a8 !important; filter: grayscale(1) brightness(.72); opacity: .62; text-shadow: none; }
+    .eliminated-piece .chess-piece { --piece-bright:#c1c7d4; --piece-mid:#8d95a5; --piece-deep:#4d5361; filter: grayscale(1) brightness(.82); opacity: .68; text-shadow: none; }
     .status-check { background: rgba(120,25,25,.7); color: #ffe1e1; font-weight: 800; }
     .status-mate { background: rgba(82,86,98,.88); color: #fff; font-weight: 900; }
     @keyframes pulse-check { from { filter: brightness(1); } to { filter: brightness(1.45); box-shadow: 0 0 18px #ff3030, inset 0 0 0 4px rgba(255,255,255,.35); } }
@@ -324,7 +377,7 @@
       const board=document.getElementById('board'); board.innerHTML='';
       for(let r=0;r<14;r++) for(let c=0;c<14;c++){
         const sq=document.createElement('div'); sq.className=`square ${zoneClass(r,c)}`; sq.dataset.r=r; sq.dataset.c=c;
-        const p=game.piece(r,c); if(p){ sq.textContent=SYMBOLS[p.player][p.type]; sq.style.color=COLORS[p.player]; sq.title=`${p.player} ${p.type}${game.eliminated.has(p.player) ? ' - disqualified' : ''}${p.type==='pawn' ? ' - pawn moves: '+(p.travel||0)+'/6' : ''}`; if(game.eliminated.has(p.player)) sq.classList.add('eliminated-piece'); }
+        const p=game.piece(r,c); if(p){ const piece=document.createElement('span'); piece.className=`chess-piece piece-${p.player} piece-${p.type}`; piece.textContent=SYMBOLS[p.player][p.type]; piece.title=`${p.player} ${p.type}${game.eliminated.has(p.player) ? ' - disqualified' : ''}${p.type==='pawn' ? ' - pawn moves: '+(p.travel||0)+'/6' : ''}`; sq.title=piece.title; sq.appendChild(piece); if(game.eliminated.has(p.player)) sq.classList.add('eliminated-piece'); }
         if(p&&p.type==='king'&&(game.checkPlayer===p.player||game.checkmatePlayer===p.player)) sq.classList.add('check');
         if(game.selected && game.selected[0]===r && game.selected[1]===c) sq.classList.add('selected');
         if(game.targets.some(([tr,tc])=>tr===r&&tc===c)) sq.classList.add(game.piece(r,c)?'capture':'target');
@@ -333,7 +386,7 @@
       }
       const name=document.getElementById('current-player-name'); name.textContent=cap(game.current); name.className=game.current;
       document.getElementById('turn-counter').textContent=`Move: ${Math.floor(game.moveCount/4)+1}`;
-      document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span style="color:${COLORS[p.player]}" title="${p.player} ${p.type}">${SYMBOLS[p.player][p.type]}</span>`).join('');
+      document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span class="captured-piece piece-${p.player}" title="${p.player} ${p.type}">${SYMBOLS[p.player][p.type]}</span>`).join('');
       document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div class="move-row"><span>${Math.floor(i/4)+1}.</span><span style="color:${COLORS[m.player]}">${cap(m.player)}</span><span>${m.text}</span></div>`).join('');
       const status=document.getElementById('game-status'); status.className='game-status';
       const eliminatedList=[...game.eliminated].map(cap).join(', ');
@@ -360,7 +413,7 @@
     }
     function showPromotion(){
       const modal=document.getElementById('promotion-modal'); const box=document.getElementById('promotion-choices'); box.innerHTML='';
-      for(const type of ['queen','rook','bishop','knight']){ const el=document.createElement('div'); el.className='promotion-choice'; el.textContent=SYMBOLS[game.current][type]; el.style.color=COLORS[game.current]; el.onclick=()=>{ const p=game.pendingPromotion; game.move(p.fr,p.fc,p.tr,p.tc,type); modal.classList.add('hidden'); render(); }; box.appendChild(el); }
+      for(const type of ['queen','rook','bishop','knight']){ const el=document.createElement('div'); el.className='promotion-choice'; const piece=document.createElement('span'); piece.className=`chess-piece piece-${game.current} piece-${type}`; piece.textContent=SYMBOLS[game.current][type]; el.appendChild(piece); el.onclick=()=>{ const p=game.pendingPromotion; game.move(p.fr,p.fc,p.tr,p.tc,type); modal.classList.add('hidden'); render(); }; box.appendChild(el); }
       modal.classList.remove('hidden');
     }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
