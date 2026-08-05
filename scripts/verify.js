@@ -53,6 +53,7 @@ function createFakeDocument() {
       dataset: {},
       title: '',
       disabled: false,
+      value: '',
       children: [],
       classList: {
         add() {},
@@ -77,6 +78,7 @@ function createFakeDocument() {
 function loadGameForBehaviorTests() {
   const sandbox = {
     console: { log() {}, error() {}, warn() {} },
+    setTimeout(fn) { fn(); return 0; },
     document: createFakeDocument(),
     window: {}
   };
@@ -112,6 +114,18 @@ function assertCheckmatedPlayerIsEliminatedWithoutStoppingGame() {
 
 assertCheckmatedPlayerIsEliminatedWithoutStoppingGame();
 
+function assertSinglePlayerAiControlsOtherPlayers(){
+  const app = loadGameForBehaviorTests();
+  const beforeLog = app.game.log.length;
+  const aiMove = app.chooseAiMove('yellow');
+  assert(aiMove && aiMove.from && aiMove.to, 'AI should be able to choose a legal move for an active player');
+  app.setSinglePlayerMode('single','red');
+  assert(app.game.log.length > beforeLog, 'When human is red, yellow AI should automatically move first in single player');
+  assert(app.game.current === 'red', 'After AI yellow moves, turn should pass to the human red player');
+}
+
+assertSinglePlayerAiControlsOtherPlayers();
+
 const requiredSnippets = [
   'const PLAYERS',
   'const SYMBOLS',
@@ -139,6 +153,12 @@ const requiredSnippets = [
   'captured-piece piece-${p.player}',
   'toggleFullscreen()',
   'fullscreenchange',
+  'game-mode-select',
+  'human-player-select',
+  'chooseAiMove(player)',
+  'performAiTurn()',
+  'setSinglePlayerMode',
+  'AI_DELAY',
   'is disqualified',
   'status-check',
   'status-mate',

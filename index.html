@@ -124,6 +124,18 @@
     .move-row:nth-child(odd) { background: rgba(255,255,255,.04); }
     .game-status { min-height: 46px; padding: 10px; border-radius: 10px; background: rgba(0,0,0,.28); line-height: 1.45; }
     .controls { display: grid; gap: 10px; }
+    .mode-controls { display: grid; gap: 10px; }
+    .mode-controls label { display: grid; gap: 6px; color: #dce6ff; font-weight: 800; }
+    .mode-controls select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #101a33;
+      color: #fff;
+      font-weight: 800;
+    }
+    .ai-note { color: #aebce0; font-size: .86rem; line-height: 1.35; }
     .btn { border: 0; border-radius: 10px; padding: 12px 16px; color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
     #new-game-btn { background: linear-gradient(135deg, #376eff, #1944b8); }
     #undo-btn { background: linear-gradient(135deg, #ff4b4b, #b91f2b); }
@@ -199,6 +211,7 @@
       <aside class="game-sidebar">
         <section class="sidebar-section"><h3>Captured Pieces</h3><div id="captured-pieces" class="captured-list"></div></section>
         <section class="sidebar-section"><h3>Move Log</h3><div id="move-log" class="move-log"></div></section>
+        <section class="sidebar-section"><h3>Game Mode</h3><div class="mode-controls"><label>Mode<select id="game-mode-select"><option value="local">Local 4 Player</option><option value="single">Single Player vs AI</option></select></label><label>Your Color<select id="human-player-select"><option value="yellow">Yellow</option><option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option></select></label><div class="ai-note">In single player, you control one color and AI moves the other players.</div></div></section>
         <section class="sidebar-section"><h3>Game Status</h3><div id="game-status" class="game-status">Loading game...</div></section>
         <section class="sidebar-section controls"><button id="new-game-btn" class="btn">New Game</button><button id="undo-btn" class="btn" disabled>Undo Move</button></section>
       </aside>
@@ -395,8 +408,13 @@
     }
 
     const game = new Game();
+    let gameMode = 'local';
+    let humanPlayer = 'yellow';
+    let aiThinking = false;
+    const AI_DELAY = 360;
+    const PIECE_VALUES = { pawn:100, knight:320, bishop:330, rook:500, queen:900, king:12000 };
     window._game = game;
-    window.FourHandedChess = { game, Game, render };
+    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode };
 
     function zoneClass(r,c){
       if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
@@ -418,15 +436,22 @@
       document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span class="captured-piece piece-${p.player}" title="${p.player} ${p.type}">${iconFor(p.type)}</span>`).join('');
       document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div class="move-row"><span>${Math.floor(i/4)+1}.</span><span style="color:${COLORS[m.player]}">${cap(m.player)}</span><span>${m.text}</span></div>`).join('');
       const status=document.getElementById('game-status'); status.className='game-status';
+      document.getElementById('game-mode-select').value=gameMode;
+      document.getElementById('human-player-select').value=humanPlayer;
       const eliminatedList=[...game.eliminated].map(cap).join(', ');
       if(game.gameOver && game.winner){ status.textContent=`GAME OVER! ${cap(game.winner)} is the last player remaining.`; status.classList.add('status-mate'); }
       else if(game.checkmatePlayer){ status.textContent=`CHECKMATE! ${cap(game.checkmatePlayer)} is disqualified. Game continues with ${cap(game.current)}.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-mate'); }
       else if(game.checkPlayer){ status.textContent=`CHECK! ${cap(game.checkPlayer)} king is under attack.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-check'); }
       else status.textContent=eliminatedList ? `Game in progress. Eliminated: ${eliminatedList}.` : 'Game in progress...';
-      document.getElementById('undo-btn').disabled = game.log.length===0;
+      if(isSinglePlayer()){
+        status.textContent += ` Single player: you are ${cap(humanPlayer)}; AI controls ${PLAYERS.filter(p=>p!==humanPlayer).map(cap).join(', ')}.`;
+        if(isAiTurn()) status.textContent += ` AI ${cap(game.current)} is thinking...`;
+      }
+      document.getElementById('undo-btn').disabled = game.log.length===0 || aiThinking;
+      scheduleAiTurn();
     }
     function clickSquare(r,c){
-      if(game.pendingPromotion) return;
+      if(game.pendingPromotion || aiThinking || isAiTurn()) return;
       const p=game.piece(r,c);
       if(game.selected){
         const [sr,sc]=game.selected;
@@ -444,6 +469,53 @@
       const modal=document.getElementById('promotion-modal'); const box=document.getElementById('promotion-choices'); box.innerHTML='';
       for(const type of ['queen','rook','bishop','knight']){ const el=document.createElement('div'); el.className='promotion-choice'; const piece=document.createElement('span'); piece.className=`chess-piece piece-${game.current} piece-${type}`; piece.innerHTML=iconFor(type); el.appendChild(piece); el.onclick=()=>{ const p=game.pendingPromotion; game.move(p.fr,p.fc,p.tr,p.tc,type); modal.classList.add('hidden'); render(); }; box.appendChild(el); }
       modal.classList.remove('hidden');
+    }
+    function isSinglePlayer(){ return gameMode==='single'; }
+    function isAiTurn(){ return isSinglePlayer() && game.current!==humanPlayer && !game.gameOver && !game.pendingPromotion && !game.eliminated.has(game.current); }
+    function chooseAiMove(player){
+      const moves=game.legalMovesFor(player);
+      if(!moves.length) return null;
+      let bestScore=-Infinity, best=[];
+      for(const move of moves){
+        const [fr,fc]=move.from, [tr,tc]=move.to;
+        const piece=game.piece(fr,fc), captured=game.piece(tr,tc);
+        const promotes=piece?.type==='pawn' && ((piece.travel||0)+1)>=6;
+        const centerDistance=Math.abs(tr-6.5)+Math.abs(tc-6.5);
+        let score=(captured ? PIECE_VALUES[captured.type]||0 : 0) + (promotes ? PIECE_VALUES.queen-PIECE_VALUES.pawn : 0) - centerDistance;
+        if(captured?.type==='king') score+=5000;
+        score+=Math.random()*8;
+        if(score>bestScore){ bestScore=score; best=[move]; }
+        else if(Math.abs(score-bestScore)<.001) best.push(move);
+      }
+      const pick=best[Math.floor(Math.random()*best.length)];
+      const p=game.piece(pick.from[0],pick.from[1]);
+      return {...pick, promo:p?.type==='pawn' && ((p.travel||0)+1)>=6 ? 'queen' : null};
+    }
+    function performAiTurn(){
+      if(!isAiTurn()){ aiThinking=false; return; }
+      const player=game.current;
+      const move=chooseAiMove(player);
+      aiThinking=false;
+      if(!move){ game.updateCheckState(); render(); return; }
+      game.move(move.from[0],move.from[1],move.to[0],move.to[1],move.promo);
+      render();
+    }
+    function scheduleAiTurn(){
+      if(!isAiTurn() || aiThinking) return;
+      aiThinking=true;
+      setTimeout(performAiTurn, AI_DELAY);
+    }
+    function restartForMode(){
+      aiThinking=false;
+      game.newGame();
+      game.selected=null;
+      game.targets=[];
+      render();
+    }
+    function setSinglePlayerMode(mode='single', human='yellow'){
+      gameMode=mode;
+      humanPlayer=human;
+      restartForMode();
     }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
     function updateFullscreenButton(){
@@ -463,11 +535,13 @@
       }
       updateFullscreenButton();
     }
-    document.getElementById('new-game-btn').addEventListener('click',()=>{ game.newGame(); render(); });
+    document.getElementById('new-game-btn').addEventListener('click',restartForMode);
+    document.getElementById('game-mode-select').addEventListener('change',e=>{ gameMode=e.target.value; restartForMode(); });
+    document.getElementById('human-player-select').addEventListener('change',e=>{ humanPlayer=e.target.value; restartForMode(); });
     document.getElementById('fullscreen-btn').addEventListener('click',toggleFullscreen);
     document.addEventListener('fullscreenchange',updateFullscreenButton);
-    document.getElementById('undo-btn').addEventListener('click',()=>{ game.undo(); render(); });
-    document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='u'){game.undo();render();} if(e.key.toLowerCase()==='n'){game.newGame();render();} if(e.key==='Escape'){game.selected=null;game.targets=[];document.getElementById('promotion-modal').classList.add('hidden');render();} });
+    document.getElementById('undo-btn').addEventListener('click',()=>{ aiThinking=false; game.undo(); render(); });
+    document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='u'&&!aiThinking){game.undo();render();} if(e.key.toLowerCase()==='n'){restartForMode();} if(e.key==='Escape'){game.selected=null;game.targets=[];document.getElementById('promotion-modal').classList.add('hidden');render();} });
     render();
     console.log('[Four-Handed Chess II] boot ok', {squares: document.querySelectorAll('.square').length, pieces: Array.from(document.querySelectorAll('.square')).filter(s=>s.textContent.trim()).length});
   })();
