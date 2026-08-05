@@ -71,8 +71,9 @@
     .capture { outline: 4px solid #ffef63; outline-offset: -4px; }
     .last { box-shadow: inset 0 0 0 4px rgba(255,255,255,.35); }
     .check { outline: 5px solid #ff2f2f; outline-offset: -5px; animation: pulse-check .8s infinite alternate; }
+    .eliminated-piece { color: #8f96a8 !important; filter: grayscale(1) brightness(.72); opacity: .62; text-shadow: none; }
     .status-check { background: rgba(120,25,25,.7); color: #ffe1e1; font-weight: 800; }
-    .status-mate { background: rgba(140,0,0,.85); color: #fff; font-weight: 900; }
+    .status-mate { background: rgba(82,86,98,.88); color: #fff; font-weight: 900; }
     @keyframes pulse-check { from { filter: brightness(1); } to { filter: brightness(1.45); box-shadow: 0 0 18px #ff3030, inset 0 0 0 4px rgba(255,255,255,.35); } }
     .board-legend { display: grid; grid-template-columns: repeat(4, auto); gap: 14px; justify-content: center; margin-top: 12px; color: #e7ecff; }
     .legend-item { display: flex; align-items: center; gap: 7px; }
@@ -168,7 +169,7 @@
       constructor(){ this.newGame(); }
       newGame(){
         this.board = Array.from({length:14},()=>Array(14).fill(null));
-        this.turn = 0; this.moveCount = 0; this.log = []; this.captured = []; this.lastMove = null; this.selected = null; this.targets = []; this.pendingPromotion = null; this.gameOver = false; this.winner = null; this.checkPlayer = null; this.checkmatePlayer = null;
+        this.turn = 0; this.moveCount = 0; this.log = []; this.captured = []; this.lastMove = null; this.selected = null; this.targets = []; this.pendingPromotion = null; this.gameOver = false; this.winner = null; this.checkPlayer = null; this.checkmatePlayer = null; this.eliminated = new Set();
         this.setup();
       }
       get current(){ return PLAYERS[this.turn]; }
@@ -185,13 +186,19 @@
         }
       }
       team(player){ return TEAMS[player]; }
+      activePlayers(){ return PLAYERS.filter(player=>!this.eliminated.has(player)); }
+      advanceTurn(){
+        const active=this.activePlayers();
+        if(active.length<=1){ this.gameOver=true; this.winner=active[0]||null; return; }
+        do { this.turn=(this.turn+1)%PLAYERS.length; } while(this.eliminated.has(this.current));
+      }
       enemy(a,b){ return !!(a && b && a !== b); }
       emptyOrEnemy(r,c,player){ const p=this.piece(r,c); return !p || this.enemy(player,p.player); }
       cloneBoard(){ return this.board.map(row=>row.map(cell=>cell?{...cell}:null)); }
       restoreBoard(saved){ this.board=saved; }
       findKing(player){ for(let r=0;r<14;r++) for(let c=0;c<14;c++){ const p=this.piece(r,c); if(p&&p.player===player&&p.type==='king') return [r,c]; } return null; }
       attackMoves(r,c){
-        const p=this.piece(r,c); if(!p) return [];
+        const p=this.piece(r,c); if(!p || this.eliminated.has(p.player)) return [];
         const out=[];
         if(p.type==='king') for(const [dr,dc] of ORTHO.concat(DIAG)){ const nr=r+dr,nc=c+dc; if(this.inBounds(nr,nc)) out.push([nr,nc]); }
         if(p.type==='queen') out.push(...this.slide(r,c,p.player,ORTHO.concat(DIAG)));
@@ -205,7 +212,7 @@
         }
         return out;
       }
-      inCheck(player){ const k=this.findKing(player); if(!k) return true; for(let r=0;r<14;r++) for(let c=0;c<14;c++){ const p=this.piece(r,c); if(p&&p.player!==player&&this.attackMoves(r,c).some(([tr,tc])=>tr===k[0]&&tc===k[1])) return true; } return false; }
+      inCheck(player){ if(this.eliminated.has(player)) return false; const k=this.findKing(player); if(!k) return true; for(let r=0;r<14;r++) for(let c=0;c<14;c++){ const p=this.piece(r,c); if(p&&p.player!==player&&!this.eliminated.has(p.player)&&this.attackMoves(r,c).some(([tr,tc])=>tr===k[0]&&tc===k[1])) return true; } return false; }
       candidateMoves(r,c){
         const p=this.piece(r,c); if(!p) return [];
         const out=this.rawMoves(r,c);
@@ -220,8 +227,28 @@
         else { this.set(tr,tc,{...p,moved:true}); this.set(fr,fc,null); }
         const bad=this.inCheck(p.player); this.restoreBoard(saved); return bad;
       }
-      legalMovesFor(player){ const out=[]; const oldTurn=this.turn; this.turn=PLAYERS.indexOf(player); for(let r=0;r<14;r++) for(let c=0;c<14;c++){ const p=this.piece(r,c); if(p&&p.player===player){ for(const [tr,tc] of this.candidateMoves(r,c)){ if(!this.wouldLeaveKingInCheck(r,c,tr,tc)) out.push({from:[r,c],to:[tr,tc]}); } } } this.turn=oldTurn; return out; }
-      updateCheckState(){ this.checkPlayer=null; this.checkmatePlayer=null; this.gameOver=false; this.winner=null; const player=this.current; if(this.inCheck(player)){ this.checkPlayer=player; if(this.legalMovesFor(player).length===0){ this.checkmatePlayer=player; this.gameOver=true; this.winner='other players'; } } }
+      legalMovesFor(player){ if(this.eliminated.has(player)) return []; const out=[]; const oldTurn=this.turn; this.turn=PLAYERS.indexOf(player); for(let r=0;r<14;r++) for(let c=0;c<14;c++){ const p=this.piece(r,c); if(p&&p.player===player){ for(const [tr,tc] of this.candidateMoves(r,c)){ if(!this.wouldLeaveKingInCheck(r,c,tr,tc)) out.push({from:[r,c],to:[tr,tc]}); } } } this.turn=oldTurn; return out; }
+      updateCheckState(){
+        this.checkPlayer=null; this.checkmatePlayer=null;
+        const active=this.activePlayers();
+        if(active.length<=1){ this.gameOver=true; this.winner=active[0]||null; return; }
+        if(this.eliminated.has(this.current)) this.advanceTurn();
+        const player=this.current;
+        if(this.inCheck(player)){
+          if(this.legalMovesFor(player).length===0){
+            this.checkmatePlayer=player;
+            this.eliminated.add(player);
+            if(this.activePlayers().length<=1){ this.gameOver=true; this.winner=this.activePlayers()[0]||null; return; }
+            this.gameOver=false;
+            this.advanceTurn();
+          } else {
+            this.checkPlayer=player;
+            this.gameOver=false;
+          }
+        } else {
+          this.gameOver=false;
+        }
+      }
       castleInfo(fr,fc,tr,tc){
         const king=this.piece(fr,fc), rook=this.piece(tr,tc);
         if(!king||!rook||king.player!==this.current||king.type!=='king'||rook.type!=='rook'||rook.player!==king.player||king.moved||rook.moved) return null;
@@ -253,16 +280,17 @@
         }
         return out;
       }
-      moves(r,c){ const p=this.piece(r,c); if(!p || p.player!==this.current || this.gameOver) return []; return this.candidateMoves(r,c).filter(([tr,tc])=>!this.wouldLeaveKingInCheck(r,c,tr,tc)); }
+      moves(r,c){ const p=this.piece(r,c); if(!p || p.player!==this.current || this.gameOver || this.eliminated.has(p.player)) return []; return this.candidateMoves(r,c).filter(([tr,tc])=>!this.wouldLeaveKingInCheck(r,c,tr,tc)); }
       notation(p,fr,fc,tr,tc,captured,promo){ const files='abcdefghijklmn'; const rank=n=>String(n+1); return `${p.type==='pawn'?'':p.type[0].toUpperCase()}${files[fc]}${rank(fr)}${captured?'x':'-'}${files[tc]}${rank(tr)}${promo?'='+promo[0].toUpperCase():''}`; }
       move(fr,fc,tr,tc,promo=null){
-        const p=this.piece(fr,fc); if(!p || p.player!==this.current) return false;
+        const p=this.piece(fr,fc); if(!p || p.player!==this.current || this.eliminated.has(p.player)) return false;
+        const eliminatedBefore=new Set(this.eliminated);
         const castle=this.castleInfo(fr,fc,tr,tc);
         if(castle){
           const king={...castle.king,moved:true}, rook={...castle.rook,moved:true};
           this.set(fr,fc,null); this.set(tr,tc,null); this.set(castle.kingTo[0],castle.kingTo[1],king); this.set(castle.rookTo[0],castle.rookTo[1],rook);
-          this.log.push({player:p.player, text:'O-O', from:[fr,fc], to:castle.kingTo, rookFrom:[tr,tc], rookTo:castle.rookTo, captured:null, promo:null, castle:true, kingBefore:castle.king, rookBefore:castle.rook});
-          this.lastMove={from:[fr,fc],to:castle.kingTo}; this.turn=(this.turn+1)%4; this.moveCount++; this.updateCheckState(); return true;
+          this.log.push({player:p.player, text:'O-O', from:[fr,fc], to:castle.kingTo, rookFrom:[tr,tc], rookTo:castle.rookTo, captured:null, promo:null, castle:true, kingBefore:castle.king, rookBefore:castle.rook, eliminatedBefore});
+          this.lastMove={from:[fr,fc],to:castle.kingTo}; this.advanceTurn(); this.moveCount++; this.updateCheckState(); return true;
         }
         if(!this.moves(fr,fc).some(([r,c])=>r===tr&&c===tc)) return false;
         const captured=this.piece(tr,tc);
@@ -271,8 +299,8 @@
         if(needsPromotion){ this.pendingPromotion={fr,fc,tr,tc,travel}; return 'promotion'; }
         const moved={...p,type:promo||p.type,moved:true}; if(p.type==='pawn') moved.travel=travel;
         this.set(tr,tc,moved); this.set(fr,fc,null); if(captured) this.captured.push(captured);
-        this.log.push({player:p.player, text:this.notation(p,fr,fc,tr,tc,captured,promo), from:[fr,fc], to:[tr,tc], captured, promo, before:{...p}, after:{...moved}});
-        this.lastMove={from:[fr,fc],to:[tr,tc]}; this.turn=(this.turn+1)%4; this.moveCount++; this.pendingPromotion=null; this.updateCheckState(); return true;
+        this.log.push({player:p.player, text:this.notation(p,fr,fc,tr,tc,captured,promo), from:[fr,fc], to:[tr,tc], captured, promo, before:{...p}, after:{...moved}, eliminatedBefore});
+        this.lastMove={from:[fr,fc],to:[tr,tc]}; this.advanceTurn(); this.moveCount++; this.pendingPromotion=null; this.updateCheckState(); return true;
       }
       undo(){
         const m=this.log.pop(); if(!m) return false;
@@ -284,7 +312,7 @@
           this.set(m.to[0],m.to[1],m.captured||null);
           if(m.captured) this.captured.pop();
         }
-        this.turn=(this.turn+3)%4; this.moveCount--; this.lastMove=this.log.length?this.log[this.log.length-1]:null; this.gameOver=false; this.winner=null; this.updateCheckState(); return true;
+        this.turn=PLAYERS.indexOf(m.player); this.eliminated=new Set(m.eliminatedBefore||[]); this.moveCount--; this.lastMove=this.log.length?this.log[this.log.length-1]:null; this.gameOver=false; this.winner=null; this.updateCheckState(); return true;
       }
     }
 
@@ -305,7 +333,7 @@
       const board=document.getElementById('board'); board.innerHTML='';
       for(let r=0;r<14;r++) for(let c=0;c<14;c++){
         const sq=document.createElement('div'); sq.className=`square ${zoneClass(r,c)}`; sq.dataset.r=r; sq.dataset.c=c;
-        const p=game.piece(r,c); if(p){ sq.textContent=SYMBOLS[p.player][p.type]; sq.style.color=COLORS[p.player]; sq.title=`${p.player} ${p.type}${p.type==='pawn' ? ' - pawn moves: '+(p.travel||0)+'/6' : ''}`; }
+        const p=game.piece(r,c); if(p){ sq.textContent=SYMBOLS[p.player][p.type]; sq.style.color=COLORS[p.player]; sq.title=`${p.player} ${p.type}${game.eliminated.has(p.player) ? ' - disqualified' : ''}${p.type==='pawn' ? ' - pawn moves: '+(p.travel||0)+'/6' : ''}`; if(game.eliminated.has(p.player)) sq.classList.add('eliminated-piece'); }
         if(p&&p.type==='king'&&(game.checkPlayer===p.player||game.checkmatePlayer===p.player)) sq.classList.add('check');
         if(game.selected && game.selected[0]===r && game.selected[1]===c) sq.classList.add('selected');
         if(game.targets.some(([tr,tc])=>tr===r&&tc===c)) sq.classList.add(game.piece(r,c)?'capture':'target');
@@ -317,9 +345,11 @@
       document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span style="color:${COLORS[p.player]}" title="${p.player} ${p.type}">${SYMBOLS[p.player][p.type]}</span>`).join('');
       document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div class="move-row"><span>${Math.floor(i/4)+1}.</span><span style="color:${COLORS[m.player]}">${cap(m.player)}</span><span>${m.text}</span></div>`).join('');
       const status=document.getElementById('game-status'); status.className='game-status';
-      if(game.checkmatePlayer){ status.textContent=`CHECKMATE! ${cap(game.checkmatePlayer)} is checkmated.`; status.classList.add('status-mate'); }
-      else if(game.checkPlayer){ status.textContent=`CHECK! ${cap(game.checkPlayer)} king is under attack.`; status.classList.add('status-check'); }
-      else status.textContent='Game in progress...';
+      const eliminatedList=[...game.eliminated].map(cap).join(', ');
+      if(game.gameOver && game.winner){ status.textContent=`GAME OVER! ${cap(game.winner)} is the last player remaining.`; status.classList.add('status-mate'); }
+      else if(game.checkmatePlayer){ status.textContent=`CHECKMATE! ${cap(game.checkmatePlayer)} is disqualified. Game continues with ${cap(game.current)}.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-mate'); }
+      else if(game.checkPlayer){ status.textContent=`CHECK! ${cap(game.checkPlayer)} king is under attack.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-check'); }
+      else status.textContent=eliminatedList ? `Game in progress. Eliminated: ${eliminatedList}.` : 'Game in progress...';
       document.getElementById('undo-btn').disabled = game.log.length===0;
     }
     function clickSquare(r,c){
