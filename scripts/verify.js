@@ -23,7 +23,10 @@ assert(!html.includes("return 'red-zone'"), 'Squares near red pieces should use 
 assert(!html.includes("return 'blue-zone'"), 'Squares near blue pieces should use the normal chess pattern');
 assert(html.includes('radial-gradient(circle at 32% 24%'), 'High-quality piece styling should include glossy radial highlights');
 assert(html.includes('color-mix(in srgb'), 'High-quality piece styling should include blended 3D colors');
-assert(html.includes('.chess-piece::after'), 'High-quality piece styling should include shine overlay');
+assert(html.includes('color: #090b10;'), 'Reference-style icons should render as dark silhouettes');
+assert(html.includes('id="fullscreen-btn"'), 'Missing full screen button');
+assert(html.includes('requestFullscreen()'), 'Full screen button should call requestFullscreen');
+assert(html.includes('.game-container:fullscreen'), 'Missing full screen layout styles');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
@@ -127,6 +130,8 @@ const requiredSnippets = [
   'eliminated-piece',
   'className=`chess-piece piece-${p.player} piece-${p.type}`',
   'captured-piece piece-${p.player}',
+  'toggleFullscreen()',
+  'fullscreenchange',
   'is disqualified',
   'status-check',
   'status-mate',
