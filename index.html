@@ -57,52 +57,43 @@
       overflow: hidden;
     }
     .chess-piece {
-      width: 86%;
-      height: 86%;
+      width: 92%;
+      height: 92%;
       display: grid;
       place-items: center;
       position: relative;
       z-index: 1;
-      border-radius: 14px;
-      color: #050505;
-      background:
-        radial-gradient(circle at 30% 22%, rgba(255,255,255,.72), transparent 24%),
-        linear-gradient(145deg, color-mix(in srgb, var(--piece-bright) 76%, #ffffff 16%), var(--piece-mid) 52%, var(--piece-deep));
-      border: 1px solid color-mix(in srgb, var(--piece-bright) 65%, #ffffff 35%);
-      box-shadow:
-        inset 0 2px 4px rgba(255,255,255,.52),
-        inset 0 -6px 12px rgba(0,0,0,.35),
-        0 7px 10px rgba(0,0,0,.36),
-        0 0 13px color-mix(in srgb, var(--piece-bright) 50%, transparent);
+      color: var(--piece-color);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       transform: translateY(-1px);
     }
     .piece-icon {
-      width: 82%;
-      height: 82%;
+      width: 88%;
+      height: 88%;
       display: block;
       fill: currentColor;
       stroke: none;
-      filter: drop-shadow(0 1px 0 rgba(255,255,255,.22)) drop-shadow(0 3px 4px rgba(0,0,0,.45));
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,.55));
       pointer-events: none;
     }
-    .captured-piece .piece-icon { width: 78%; height: 78%; }
-    .piece-yellow { --piece-bright:#ffe96a; --piece-mid:#ffc400; --piece-deep:#9b6c00; }
-    .piece-green { --piece-bright:#65f59a; --piece-mid:#24c95d; --piece-deep:#096d33; }
-    .piece-red { --piece-bright:#ff8585; --piece-mid:#ff4f4f; --piece-deep:#8f151f; }
-    .piece-blue { --piece-bright:#9fc2ff; --piece-mid:#5d92ff; --piece-deep:#1846aa; }
+    .piece-yellow { --piece-color:#ffd700; }
+    .piece-green { --piece-color:#32cd72; }
+    .piece-red { --piece-color:#ff5757; }
+    .piece-blue { --piece-color:#6ea0ff; }
     .captured-piece {
       display: inline-grid;
       place-items: center;
       width: 1.55em;
       height: 1.55em;
       margin: 1px;
-      border-radius: 9px;
-      font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans", serif;
-      font-weight: 900;
-      color: #090b10;
-      background: linear-gradient(145deg, var(--piece-mid), var(--piece-deep));
-      box-shadow: inset 0 1px 3px rgba(255,255,255,.4), 0 2px 5px rgba(0,0,0,.28);
+      color: var(--piece-color);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
     }
+    .captured-piece .piece-icon { width: 88%; height: 88%; }
     .inactive { visibility: hidden; pointer-events: none; background: transparent; border-color: transparent; cursor: default; }
     .core.light { background: #35415d; }
     .core.dark { background: #202a42; }
@@ -199,14 +190,14 @@
       blue:{king:'♚',queen:'♛',rook:'♜',bishop:'♝',knight:'♞',pawn:'♟'}
     };
     const ICONS = {
-      pawn:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="14" r="8"/><path d="M23 29c0-6 4-11 9-11s9 5 9 11c0 4-2 8-5 10l5 8H23l5-8c-3-2-5-6-5-10Z"/><path d="M18 50h28l4 8H14l4-8Z"/></svg>',
-      knight:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M18 56h35l-4-9H29c3-7 6-13 4-20l9 7 7-5-13-18h-9l-12 10 5 5 7-4c-2 8-9 15-9 34Z"/><circle cx="34" cy="18" r="2.2" fill="#fff"/></svg>',
-      bishop:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6c9 8 13 15 13 23 0 7-4 12-10 14l6 6H23l6-6c-6-2-10-7-10-14 0-8 4-15 13-23Z"/><path d="M32 16l-7 17 14-12-7-5Z" fill="#fff" opacity=".42"/><path d="M18 51h28l5 7H13l5-7Z"/></svg>',
-      rook:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M16 8h9v8h5V8h5v8h5V8h9v17H16V8Z"/><path d="M20 27h24v20H20V27Z"/><path d="M16 49h32l5 9H11l5-9Z"/></svg>',
-      queen:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><circle cx="13" cy="14" r="5"/><circle cx="25" cy="10" r="5"/><circle cx="39" cy="10" r="5"/><circle cx="51" cy="14" r="5"/><path d="M14 21l8 22h20l8-22-11 10-7-16-7 16-11-10Z"/><path d="M21 46h22l5 12H16l5-12Z"/></svg>',
-      king:'<svg class="piece-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M29 5h6v7h7v6h-7v8h-6v-8h-7v-6h7V5Z"/><path d="M21 30c0-8 5-13 11-13s11 5 11 13c0 6-3 10-8 13l7 6H22l7-6c-5-3-8-7-8-13Z"/><path d="M17 51h30l5 7H12l5-7Z"/></svg>'
+      pawn:{w:384,h:544,d:`M192-32c66.3 0 120 53.7 120 120 0 27-8.9 51.9-24 72 17.7 0 32 14.3 32 32s-14.3 32-32 32l-10.7 0 26.7 160 56.2 70.3c5 6.3 7.8 14.1 7.8 22.2 0 19.6-15.9 35.5-35.5 35.5L51.5 512c-19.6 0-35.5-15.9-35.5-35.5 0-8.1 2.7-15.9 7.8-22.2L80 384 106.7 224 96 224c-17.7 0-32-14.3-32-32s14.3-32 32-32c-15.1-20.1-24-45-24-72 0-66.3 53.7-120 120-120z`},
+      knight:{w:384,h:544,d:`M192-32c106 0 192 86 192 192l0 133.5c0 17-6.8 33.2-18.7 45.2L320 384 370.8 434.7c8.5 8.5 13.2 20 13.2 32 0 25-20.3 45.2-45.2 45.3L45.3 512c-25 0-45.2-20.3-45.2-45.3 0-12 4.8-23.5 13.2-32L64 384 64 349.4c0-18.7 8.2-36.4 22.3-48.6l89.7-76.8-48 0-12.1 12.1c-12.7 12.7-30 19.9-48 19.9-37.5 0-67.9-30.4-67.9-67.9l0-8.7c0-22.8 8.2-44.9 23.1-62.3L96 32 96 0c0-17.7 14.3-32 32-32l64 0zM160 72a24 24 0 1 0 0 48 24 24 0 1 0 0-48z`},
+      bishop:{w:320,h:544,d:`M64 384L48.3 368.3C17.4 337.4 0 295.4 0 251.7 0 213.1 13.5 175.8 38.2 146.1L106.7 64 96 64C78.3 64 64 49.7 64 32S78.3 0 96 0L224 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-10.7 0 47.6 57.1-85.9 85.9c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l82.3-82.3c18.7 27.3 28.7 59.7 28.7 93 0 43.7-17.4 85.7-48.3 116.6L256 384 312.2 454.3c5 6.3 7.8 14.1 7.8 22.2 0 19.6-15.9 35.5-35.5 35.5L35.5 512c-19.6 0-35.5-15.9-35.5-35.5 0-8.1 2.7-15.9 7.8-22.2L64 384z`},
+      rook:{w:384,h:544,d:`M0 32L0 133.5c0 17 6.7 33.3 18.7 45.3L64 224 64 384 7.8 454.3C2.7 460.6 0 468.4 0 476.5 0 496.1 15.9 512 35.5 512l312.9 0c19.6 0 35.5-15.9 35.5-35.5 0-8.1-2.7-15.9-7.8-22.2l-56.2-70.3 0-160 45.3-45.3c12-12 18.7-28.3 18.7-45.3L384 32c0-17.7-14.3-32-32-32L320 0c-17.7 0-32 14.3-32 32l0 32-48 0 0-32c0-17.7-14.3-32-32-32L176 0c-17.7 0-32 14.3-32 32l0 32-48 0 0-32C96 14.3 81.7 0 64 0L32 0C14.3 0 0 14.3 0 32z`},
+      queen:{w:512,h:544,d:`M256 80a48 48 0 1 0 0-96 48 48 0 1 0 0 96zM5.5 185L128 384 71.8 454.3c-5 6.3-7.8 14.1-7.8 22.2 0 19.6 15.9 35.5 35.5 35.5l312.9 0c19.6 0 35.5-15.9 35.5-35.5 0-8.1-2.7-15.9-7.8-22.2L384 384 506.5 185c3.6-5.9 5.5-12.7 5.5-19.6l0-.6c0-20.3-16.5-36.8-36.8-36.8-7.3 0-14.4 2.2-20.4 6.2l-16.9 11.3c-12.7 8.5-29.6 6.8-40.4-4l-34.1-34.1C356.1 100.1 346.2 96 336 96s-20.1 4.1-27.3 11.3l-30.1 30.1c-12.5 12.5-32.8 12.5-45.3 0l-30.1-30.1C196.1 100.1 186.2 96 176 96s-20.1 4.1-27.3 11.3l-34.1 34.1c-10.8 10.8-27.7 12.5-40.4 4L57.3 134.2c-6.1-4-13.2-6.2-20.4-6.2-20.3 0-36.8 16.5-36.8 36.8l0 .6c0 6.9 1.9 13.7 5.5 19.6z`},
+      king:{w:448,h:544,d:`M224-32c17.7 0 32 14.3 32 32l0 32 32 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-32 0 0 64 153.8 0c21.1 0 38.2 17.1 38.2 38.2 0 6.4-1.6 12.7-4.7 18.3L352 384 408.2 454.3c5 6.3 7.8 14.1 7.8 22.2 0 19.6-15.9 35.5-35.5 35.5L67.5 512c-19.6 0-35.5-15.9-35.5-35.5 0-8.1 2.7-15.9 7.8-22.2L96 384 4.7 216.6C1.6 210.9 0 204.6 0 198.2 0 177.1 17.1 160 38.2 160l153.8 0 0-64-32 0c-17.7 0-32-14.3-32-32s14.3-32 32-32l32 0 0-32c0-17.7 14.3-32 32-32z`}
     };
-    function iconFor(type){ return ICONS[type] || ICONS.pawn; }
+    function iconFor(type){ const i=ICONS[type] || ICONS.pawn; return `<svg class="piece-icon" viewBox="0 -32 ${i.w} ${i.h}" aria-hidden="true"><path d="${i.d}"/></svg>`; }
     const YELLOW_RED_BACK = ['rook','knight','bishop','queen','king','bishop','knight','rook'];
     const GREEN_BLUE_BACK = ['rook','knight','bishop','king','queen','bishop','knight','rook'];
     const DIR = { yellow:[-1,0], green:[1,0], red:[0,-1], blue:[0,1] };

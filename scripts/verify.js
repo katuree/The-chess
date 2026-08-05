@@ -21,11 +21,11 @@ assert(!html.includes("return 'green-zone'"), 'Squares near green pieces should 
 assert(!html.includes("return 'yellow-zone'"), 'Squares near yellow pieces should use the normal chess pattern');
 assert(!html.includes("return 'red-zone'"), 'Squares near red pieces should use the normal chess pattern');
 assert(!html.includes("return 'blue-zone'"), 'Squares near blue pieces should use the normal chess pattern');
-assert(html.includes('radial-gradient(circle at 30% 22%'), 'High-quality piece styling should include glossy radial highlights');
-assert(html.includes('color-mix(in srgb'), 'High-quality piece styling should include blended 3D colors');
-assert(html.includes('color: #050505;'), 'Reference-style icons should render as dark silhouettes');
+assert(html.includes('background: transparent;'), 'Pieces should not have round/token backgrounds');
+assert(html.includes('color: var(--piece-color);'), 'Piece silhouettes should be colored directly per player');
 assert(html.includes('const ICONS ='), 'Reference-style pieces should use custom SVG icon shapes, not only font glyphs');
-assert(html.includes('<svg class="piece-icon"'), 'Reference-style pieces should render inline SVG icons');
+assert(html.includes('M192-32c66.3'), 'Reference-style pieces should use Font Awesome pawn silhouette path');
+assert(html.includes('<svg class="piece-icon" viewBox="0 -32 ${i.w} ${i.h}"'), 'Reference-style pieces should render inline SVG icons');
 assert(html.includes('piece.innerHTML=iconFor(p.type)'), 'Board pieces should render the SVG icon for each type');
 assert(html.includes('id="fullscreen-btn"'), 'Missing full screen button');
 assert(html.includes('requestFullscreen()'), 'Full screen button should call requestFullscreen');
