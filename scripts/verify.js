@@ -17,6 +17,10 @@ assert(!html.includes('.yellow-zone { background: linear-gradient'), 'Board zone
 assert(!html.includes('.green-zone { background: linear-gradient'), 'Board zones should not use player-colored green backgrounds');
 assert(!html.includes('.red-zone { background: linear-gradient'), 'Board zones should not use player-colored red backgrounds');
 assert(!html.includes('.blue-zone { background: linear-gradient'), 'Board zones should not use player-colored blue backgrounds');
+assert(!html.includes("return 'green-zone'"), 'Squares near green pieces should use the normal chess pattern');
+assert(!html.includes("return 'yellow-zone'"), 'Squares near yellow pieces should use the normal chess pattern');
+assert(!html.includes("return 'red-zone'"), 'Squares near red pieces should use the normal chess pattern');
+assert(!html.includes("return 'blue-zone'"), 'Squares near blue pieces should use the normal chess pattern');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 

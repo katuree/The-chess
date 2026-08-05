@@ -62,7 +62,6 @@
     .inactive { visibility: hidden; pointer-events: none; background: transparent; border-color: transparent; cursor: default; }
     .core.light { background: #35415d; }
     .core.dark { background: #202a42; }
-    .yellow-zone, .green-zone, .red-zone, .blue-zone { background: #26314b; }
     .selected { outline: 4px solid #00ff95; outline-offset: -4px; }
     .target::after { content: ""; width: 18px; height: 18px; border-radius: 50%; background: #00ff95cc; box-shadow: 0 0 12px #00ff95; }
     .capture { outline: 4px solid #ffef63; outline-offset: -4px; }
@@ -318,12 +317,7 @@
     window.FourHandedChess = { game, Game, render };
 
     function zoneClass(r,c){
-      if(r>=2&&r<=11&&c>=3&&c<=10) return `core ${(r+c)%2?'light':'dark'}`;
-      if(r<2&&c>=3&&c<=10) return 'green-zone';
-      if(r>11&&c>=3&&c<=10) return 'yellow-zone';
-      if(c<2&&r>=3&&r<=10) return 'blue-zone';
-      if(c>11&&r>=3&&r<=10) return 'red-zone';
-      if((r>=3&&r<=10&&c===2) || (r>=3&&r<=10&&c===11) || (c>=3&&c<=10&&r===2) || (c>=3&&c<=10&&r===11)) return `core ${(r+c)%2?'light':'dark'}`;
+      if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
       return 'inactive';
     }
     function render(){
