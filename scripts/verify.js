@@ -60,6 +60,9 @@ const normalScripts = [...normalHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>
 assert(normalHtml.includes('id="normal-board"'), 'Normal chess page should have its own board');
 assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should have boot marker');
 assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');
+assert(normalHtml.includes('background:#f0d9b5') && normalHtml.includes('background:#b58863'), 'Normal chess board should use cleaner classic tile colors');
+assert(normalHtml.includes('data-label'), 'Normal chess board should show coordinate labels on edge tiles');
+assert(normalHtml.includes('paint-order:stroke fill'), 'Normal chess pieces should have readable outlined silhouettes');
 assert(normalHtml.includes('href="./index.html"') && normalHtml.includes('href="./four-player.html"'), 'Normal chess page should link back to chooser and 4-player page');
 assert(normalScripts.length === 1, 'Expected one normal chess script block');
 
