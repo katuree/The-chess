@@ -61,6 +61,7 @@ assert(normalHtml.includes('id="normal-board"'), 'Normal chess page should have 
 assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should have boot marker');
 assert(normalHtml.includes('id="normal-mode-menu"'), 'Normal chess should open with a single/multiple player menu before the board');
 assert(normalHtml.includes('id="single-player-btn"') && normalHtml.includes('id="multi-player-btn"'), 'Normal chess menu should have Single Player and Multiple Player choices');
+assert(!normalHtml.includes('Choose how you want to play') && !normalHtml.includes('Start Single Player') && !normalHtml.includes('Start Multiple Player'), 'Normal chess mode menu should stay minimal with buttons only');
 assert(normalHtml.includes('id="normal-game-screen"') && normalHtml.includes('class="game-container hidden"'), 'Normal chess game screen should be hidden until mode selection');
 assert(normalHtml.includes('startNormalGame') && normalHtml.includes('chooseNormalAiMove') && normalHtml.includes('NORMAL_AI_DELAY'), 'Normal chess single player should start from menu and include AI opponent');
 assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');

@@ -9,16 +9,12 @@
     body { min-height:100vh; padding:18px; font-family:"Segoe UI",Arial,sans-serif; color:#f5f7ff; background:radial-gradient(circle at top,#1b3159 0%,#111a31 48%,#081020 100%); }
     .game-container { max-width:1180px; margin:0 auto; }
     .hidden { display:none !important; }
-    .mode-menu { width:min(980px,100%); margin:0 auto; min-height:calc(100vh - 36px); display:grid; place-items:center; text-align:center; }
-    .menu-panel { width:100%; padding:34px; border:1px solid rgba(255,255,255,.16); border-radius:28px; background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.05)); box-shadow:0 24px 75px rgba(0,0,0,.42); }
-    .menu-subtitle { color:#c7d2ee; font-size:1.1rem; margin:10px 0 28px; }
-    .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
-    .mode-card { min-height:260px; border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:24px; background:rgba(0,0,0,.18); color:#fff; cursor:pointer; text-align:left; transition:transform .16s ease,border-color .16s ease; }
-    .mode-card:hover { transform:translateY(-5px); border-color:#ffe45c; }
-    .mode-card h2 { color:#ffe45c; margin-bottom:10px; font-size:1.9rem; }
-    .mode-card p { color:#dce6ff; line-height:1.5; font-weight:700; }
-    .mode-card .play-now { display:block; margin-top:20px; text-align:center; padding:13px 16px; border-radius:12px; background:linear-gradient(135deg,#16b984,#08735f); font-weight:900; }
-    .mode-card.multi .play-now { background:linear-gradient(135deg,#376eff,#1944b8); }
+    .mode-menu { width:min(620px,100%); margin:0 auto; min-height:calc(100vh - 36px); display:grid; place-items:center; text-align:center; }
+    .menu-panel { width:100%; padding:28px; border:1px solid rgba(255,255,255,.16); border-radius:24px; background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.05)); box-shadow:0 24px 75px rgba(0,0,0,.42); }
+    .mode-grid { display:grid; gap:14px; }
+    .mode-card { border:0; border-radius:16px; padding:18px 20px; background:linear-gradient(135deg,#16b984,#08735f); color:#fff; cursor:pointer; text-align:center; font-size:1.2rem; font-weight:900; transition:transform .16s ease,filter .16s ease; }
+    .mode-card.multi { background:linear-gradient(135deg,#376eff,#1944b8); }
+    .mode-card:hover { transform:translateY(-3px); filter:brightness(1.08); }
     .top-nav { margin-bottom:14px; }
     .top-nav a { color:#ffe45c; text-decoration:none; font-weight:900; }
     .game-header { text-align:center; margin-bottom:16px; }
@@ -87,19 +83,9 @@
   <section id="normal-mode-menu" class="mode-menu">
     <div class="menu-panel">
       <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./four-player.html">4 Player Chess</a></nav>
-      <h1>Normal Chess</h1>
-      <p class="menu-subtitle">Choose how you want to play before the board opens.</p>
       <div class="mode-grid">
-        <button id="single-player-btn" class="mode-card single" type="button">
-          <h2>Single Player</h2>
-          <p>You play White. The computer plays Black with a short thinking delay after your move.</p>
-          <span class="play-now">Start Single Player</span>
-        </button>
-        <button id="multi-player-btn" class="mode-card multi" type="button">
-          <h2>Multiple Player</h2>
-          <p>Two players share the same device. White and Black take turns locally.</p>
-          <span class="play-now">Start Multiple Player</span>
-        </button>
+        <button id="single-player-btn" class="mode-card single" type="button">Single Player</button>
+        <button id="multi-player-btn" class="mode-card multi" type="button">Multiple Player</button>
       </div>
     </div>
   </section>
