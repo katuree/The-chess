@@ -32,6 +32,11 @@ assert(html.includes('requestFullscreen()'), 'Full screen button should call req
 assert(html.includes('.board-container:fullscreen'), 'Full screen layout should target only the board container');
 assert(!html.includes('.game-container:fullscreen'), 'Full screen should not include the full game/header/sidebar container');
 assert(html.includes('document.querySelector(\'.board-container\')'), 'Full screen button should open only the board container');
+assert(html.includes('const AI_DELAY = 950'), 'AI turns should have a visible delay between each chance');
+assert(html.includes('id="sound-btn"'), 'Missing sound effects toggle button');
+assert(html.includes('function playSound'), 'Missing sound effects helper');
+assert(html.includes('AudioContext||window.webkitAudioContext'), 'Sound effects should use browser WebAudio');
+assert(html.includes('playSound(this.gameOver||this.checkmatePlayer'), 'Moves should trigger sound effects after game state updates');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
@@ -159,6 +164,11 @@ const requiredSnippets = [
   'performAiTurn()',
   'setSinglePlayerMode',
   'AI_DELAY',
+  'sound-btn',
+  'playSound(kind',
+  'toggleSound()',
+  'unlockAudio()',
+  'AudioContext',
   'is disqualified',
   'status-check',
   'status-mate',

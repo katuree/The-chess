@@ -138,6 +138,7 @@
     .ai-note { color: #aebce0; font-size: .86rem; line-height: 1.35; }
     .btn { border: 0; border-radius: 10px; padding: 12px 16px; color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
     #new-game-btn { background: linear-gradient(135deg, #376eff, #1944b8); }
+    #sound-btn { background: linear-gradient(135deg, #7d5cff, #4729b8); }
     #undo-btn { background: linear-gradient(135deg, #ff4b4b, #b91f2b); }
     #fullscreen-btn {
       position: absolute;
@@ -213,7 +214,7 @@
         <section class="sidebar-section"><h3>Move Log</h3><div id="move-log" class="move-log"></div></section>
         <section class="sidebar-section"><h3>Game Mode</h3><div class="mode-controls"><label>Mode<select id="game-mode-select"><option value="local">Local 4 Player</option><option value="single">Single Player vs AI</option></select></label><label>Your Color<select id="human-player-select"><option value="yellow">Yellow</option><option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option></select></label><div class="ai-note">In single player, you control one color and AI moves the other players.</div></div></section>
         <section class="sidebar-section"><h3>Game Status</h3><div id="game-status" class="game-status">Loading game...</div></section>
-        <section class="sidebar-section controls"><button id="new-game-btn" class="btn">New Game</button><button id="undo-btn" class="btn" disabled>Undo Move</button></section>
+        <section class="sidebar-section controls"><button id="new-game-btn" class="btn">New Game</button><button id="sound-btn" class="btn" type="button">Sound: On</button><button id="undo-btn" class="btn" disabled>Undo Move</button></section>
       </aside>
     </main>
   </div>
@@ -381,7 +382,7 @@
           const king={...castle.king,moved:true}, rook={...castle.rook,moved:true};
           this.set(fr,fc,null); this.set(tr,tc,null); this.set(castle.kingTo[0],castle.kingTo[1],king); this.set(castle.rookTo[0],castle.rookTo[1],rook);
           this.log.push({player:p.player, text:'O-O', from:[fr,fc], to:castle.kingTo, rookFrom:[tr,tc], rookTo:castle.rookTo, captured:null, promo:null, castle:true, kingBefore:castle.king, rookBefore:castle.rook, eliminatedBefore});
-          this.lastMove={from:[fr,fc],to:castle.kingTo}; this.advanceTurn(); this.moveCount++; this.updateCheckState(); return true;
+          this.lastMove={from:[fr,fc],to:castle.kingTo}; this.advanceTurn(); this.moveCount++; this.updateCheckState(); playSound(this.gameOver||this.checkmatePlayer?'mate':this.checkPlayer?'check':'move'); return true;
         }
         if(!this.moves(fr,fc).some(([r,c])=>r===tr&&c===tc)) return false;
         const captured=this.piece(tr,tc);
@@ -391,7 +392,7 @@
         const moved={...p,type:promo||p.type,moved:true}; if(p.type==='pawn') moved.travel=travel;
         this.set(tr,tc,moved); this.set(fr,fc,null); if(captured) this.captured.push(captured);
         this.log.push({player:p.player, text:this.notation(p,fr,fc,tr,tc,captured,promo), from:[fr,fc], to:[tr,tc], captured, promo, before:{...p}, after:{...moved}, eliminatedBefore});
-        this.lastMove={from:[fr,fc],to:[tr,tc]}; this.advanceTurn(); this.moveCount++; this.pendingPromotion=null; this.updateCheckState(); return true;
+        this.lastMove={from:[fr,fc],to:[tr,tc]}; this.advanceTurn(); this.moveCount++; this.pendingPromotion=null; this.updateCheckState(); playSound(this.gameOver||this.checkmatePlayer?'mate':this.checkPlayer?'check':captured?'capture':'move'); return true;
       }
       undo(){
         const m=this.log.pop(); if(!m) return false;
@@ -411,14 +412,51 @@
     let gameMode = 'local';
     let humanPlayer = 'yellow';
     let aiThinking = false;
-    const AI_DELAY = 360;
+    let soundEnabled = true;
+    let audioCtx = null;
+    const AI_DELAY = 950;
     const PIECE_VALUES = { pawn:100, knight:320, bishop:330, rook:500, queen:900, king:12000 };
     window._game = game;
-    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode };
+    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, playSound, getAiDelay:()=>AI_DELAY };
 
     function zoneClass(r,c){
       if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
       return 'inactive';
+    }
+    function unlockAudio(){
+      if(!soundEnabled) return null;
+      const AudioCtor=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtor) return null;
+      if(!audioCtx) audioCtx=new AudioCtor();
+      if(audioCtx.state==='suspended') audioCtx.resume();
+      return audioCtx;
+    }
+    function playTone(freq, start, duration, type='sine', gain=.055){
+      const ctx=unlockAudio();
+      if(!ctx) return;
+      const osc=ctx.createOscillator();
+      const amp=ctx.createGain();
+      osc.type=type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime+start);
+      amp.gain.setValueAtTime(0.0001, ctx.currentTime+start);
+      amp.gain.exponentialRampToValueAtTime(gain, ctx.currentTime+start+.015);
+      amp.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+start+duration);
+      osc.connect(amp).connect(ctx.destination);
+      osc.start(ctx.currentTime+start);
+      osc.stop(ctx.currentTime+start+duration+.025);
+    }
+    function playSound(kind='move'){
+      if(!soundEnabled) return;
+      if(kind==='capture'){ playTone(260,0,.09,'square',.07); playTone(170,.08,.13,'triangle',.045); }
+      else if(kind==='check'){ playTone(620,0,.08,'sawtooth',.055); playTone(780,.09,.12,'sawtooth',.04); }
+      else if(kind==='mate'){ playTone(220,0,.13,'triangle',.07); playTone(165,.13,.22,'triangle',.05); }
+      else if(kind==='ai'){ playTone(420,0,.08,'sine',.045); playTone(560,.07,.09,'sine',.035); }
+      else playTone(360,0,.075,'sine',.045);
+    }
+    function toggleSound(){
+      soundEnabled=!soundEnabled;
+      document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off';
+      if(soundEnabled){ unlockAudio(); playSound('move'); }
     }
     function render(){
       const board=document.getElementById('board'); board.innerHTML='';
@@ -438,6 +476,7 @@
       const status=document.getElementById('game-status'); status.className='game-status';
       document.getElementById('game-mode-select').value=gameMode;
       document.getElementById('human-player-select').value=humanPlayer;
+      document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off';
       const eliminatedList=[...game.eliminated].map(cap).join(', ');
       if(game.gameOver && game.winner){ status.textContent=`GAME OVER! ${cap(game.winner)} is the last player remaining.`; status.classList.add('status-mate'); }
       else if(game.checkmatePlayer){ status.textContent=`CHECKMATE! ${cap(game.checkmatePlayer)} is disqualified. Game continues with ${cap(game.current)}.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-mate'); }
@@ -451,6 +490,7 @@
       scheduleAiTurn();
     }
     function clickSquare(r,c){
+      unlockAudio();
       if(game.pendingPromotion || aiThinking || isAiTurn()) return;
       const p=game.piece(r,c);
       if(game.selected){
@@ -535,9 +575,10 @@
       }
       updateFullscreenButton();
     }
-    document.getElementById('new-game-btn').addEventListener('click',restartForMode);
-    document.getElementById('game-mode-select').addEventListener('change',e=>{ gameMode=e.target.value; restartForMode(); });
-    document.getElementById('human-player-select').addEventListener('change',e=>{ humanPlayer=e.target.value; restartForMode(); });
+    document.getElementById('new-game-btn').addEventListener('click',()=>{ unlockAudio(); restartForMode(); });
+    document.getElementById('sound-btn').addEventListener('click',toggleSound);
+    document.getElementById('game-mode-select').addEventListener('change',e=>{ unlockAudio(); gameMode=e.target.value; restartForMode(); });
+    document.getElementById('human-player-select').addEventListener('change',e=>{ unlockAudio(); humanPlayer=e.target.value; restartForMode(); });
     document.getElementById('fullscreen-btn').addEventListener('click',toggleFullscreen);
     document.addEventListener('fullscreenchange',updateFullscreenButton);
     document.getElementById('undo-btn').addEventListener('click',()=>{ aiThinking=false; game.undo(); render(); });
