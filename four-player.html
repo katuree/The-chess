@@ -14,6 +14,13 @@
       background: radial-gradient(circle at top, #1b3159 0%, #111a31 48%, #081020 100%);
     }
     .game-container { max-width: 1420px; margin: 0 auto; }
+    .hidden { display: none !important; }
+    .mode-menu { width: min(620px, 100%); margin: 0 auto; min-height: calc(100vh - 36px); display: grid; place-items: center; text-align: center; }
+    .menu-panel { width: 100%; padding: 28px; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.05)); box-shadow: 0 24px 75px rgba(0,0,0,.42); }
+    .mode-grid { display: grid; gap: 14px; }
+    .mode-card { border: 0; border-radius: 16px; padding: 18px 20px; background: linear-gradient(135deg, #16b984, #08735f); color: #fff; cursor: pointer; text-align: center; font-size: 1.2rem; font-weight: 900; transition: transform .16s ease, filter .16s ease; }
+    .mode-card.multi { background: linear-gradient(135deg, #376eff, #1944b8); }
+    .mode-card:hover { transform: translateY(-3px); filter: brightness(1.08); }
     .top-nav { margin-bottom: 12px; }
     .top-nav a { color: #ffe45c; text-decoration: none; font-weight: 900; }
     .game-header { text-align: center; margin-bottom: 16px; }
@@ -199,8 +206,17 @@
   </style>
 </head>
 <body>
-  <div class="game-container">
-    <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./normal-chess.html">Normal Chess</a></nav>
+  <section id="four-player-mode-menu" class="mode-menu">
+    <div class="menu-panel">
+      <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./normal-chess.html">Normal Chess</a></nav>
+      <div class="mode-grid">
+        <button id="four-single-player-btn" class="mode-card single" type="button">Single Player</button>
+        <button id="four-multi-player-btn" class="mode-card multi" type="button">Multiple Player</button>
+      </div>
+    </div>
+  </section>
+  <div id="four-player-game-screen" class="game-container hidden">
+    <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./normal-chess.html">Normal Chess</a> · <a href="#" id="four-change-mode-link">Change Mode</a></nav>
     <header class="game-header">
       <h1>The Chess</h1>
       <div class="turn-indicator"><span id="current-player-name">Yellow</span>'s Turn <span id="turn-counter">Move: 1</span></div>
@@ -432,7 +448,7 @@
     const AI_DELAY = 950;
     const PIECE_VALUES = { pawn:100, knight:320, bishop:330, rook:500, queen:900, king:12000 };
     window._game = game;
-    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, playSound, getAiDelay:()=>AI_DELAY, serializeGame, applyRemoteState, hostRoom, joinRoom, leaveRoom };
+    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, startFourPlayerGame, showFourPlayerModeMenu, playSound, getAiDelay:()=>AI_DELAY, serializeGame, applyRemoteState, hostRoom, joinRoom, leaveRoom };
 
     function zoneClass(r,c){
       if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
@@ -717,6 +733,23 @@
       }
       updateFullscreenButton();
     }
+    function startFourPlayerGame(mode){
+      gameMode = mode === 'single' ? 'single' : 'local';
+      humanPlayer = humanPlayer || 'yellow';
+      aiThinking = false;
+      document.getElementById('four-player-mode-menu').classList.add('hidden');
+      document.getElementById('four-player-game-screen').classList.remove('hidden');
+      restartForMode();
+    }
+    function showFourPlayerModeMenu(e){
+      e?.preventDefault();
+      aiThinking=false;
+      document.getElementById('four-player-game-screen').classList.add('hidden');
+      document.getElementById('four-player-mode-menu').classList.remove('hidden');
+    }
+    document.getElementById('four-single-player-btn').addEventListener('click',()=>startFourPlayerGame('single'));
+    document.getElementById('four-multi-player-btn').addEventListener('click',()=>startFourPlayerGame('multi'));
+    document.getElementById('four-change-mode-link').addEventListener('click',showFourPlayerModeMenu);
     document.getElementById('new-game-btn').addEventListener('click',()=>{ unlockAudio(); restartForMode(); });
     document.getElementById('sound-btn').addEventListener('click',toggleSound);
     document.getElementById('game-mode-select').addEventListener('change',e=>{ unlockAudio(); gameMode=e.target.value; restartForMode(); });
@@ -731,7 +764,7 @@
     document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='u'&&!aiThinking){game.undo();render();} if(e.key.toLowerCase()==='n'){restartForMode();} if(e.key==='Escape'){game.selected=null;game.targets=[];document.getElementById('promotion-modal').classList.add('hidden');render();} });
     render();
     const inviteRoom = new URLSearchParams(location.search).get('room');
-    if(inviteRoom){ document.getElementById('join-room-code').value=inviteRoom; joinRoom(inviteRoom); }
+    if(inviteRoom){ startFourPlayerGame('multi'); document.getElementById('join-room-code').value=inviteRoom; joinRoom(inviteRoom); }
     console.log('[Four-Handed Chess II] boot ok', {squares: document.querySelectorAll('.square').length, pieces: Array.from(document.querySelectorAll('.square')).filter(s=>s.textContent.trim()).length});
   })();
   </script>
