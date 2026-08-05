@@ -13,6 +13,10 @@ function assert(condition, message) {
 assert(html.includes('id="board"'), 'Missing #board element');
 assert(html.includes('class Game'), 'Missing Game class');
 assert(html.includes('[Four-Handed Chess II] boot ok'), 'Missing boot verification log');
+assert(!html.includes('.yellow-zone { background: linear-gradient'), 'Board zones should not use player-colored yellow backgrounds');
+assert(!html.includes('.green-zone { background: linear-gradient'), 'Board zones should not use player-colored green backgrounds');
+assert(!html.includes('.red-zone { background: linear-gradient'), 'Board zones should not use player-colored red backgrounds');
+assert(!html.includes('.blue-zone { background: linear-gradient'), 'Board zones should not use player-colored blue backgrounds');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
