@@ -3,13 +3,21 @@ const path = require('path');
 const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
-const htmlPath = path.join(root, 'index.html');
-const html = fs.readFileSync(htmlPath, 'utf8');
+const landingPath = path.join(root, 'index.html');
+const fourPlayerPath = path.join(root, 'four-player.html');
+const normalPath = path.join(root, 'normal-chess.html');
+const landingHtml = fs.readFileSync(landingPath, 'utf8');
+const html = fs.readFileSync(fourPlayerPath, 'utf8');
+const normalHtml = fs.readFileSync(normalPath, 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+assert(landingHtml.includes('id="four-player-link"') && landingHtml.includes('./four-player.html'), 'Landing page should link to 4 Player Chess page');
+assert(landingHtml.includes('id="normal-chess-link"') && landingHtml.includes('./normal-chess.html'), 'Landing page should link to Normal Chess page');
+assert(landingHtml.includes('Choose which chess webpage'), 'Site root should open a game choice page');
+assert(html.includes('href="./index.html"') && html.includes('href="./normal-chess.html"'), '4-player chess page should link back to chooser and normal chess page');
 assert(html.includes('id="board"'), 'Missing #board element');
 assert(html.includes('class Game'), 'Missing Game class');
 assert(html.includes('[Four-Handed Chess II] boot ok'), 'Missing boot verification log');
@@ -48,8 +56,15 @@ assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const s
 
 const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 assert(scripts.length === 1, 'Expected one executable script block');
+const normalScripts = [...normalHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+assert(normalHtml.includes('id="normal-board"'), 'Normal chess page should have its own board');
+assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should have boot marker');
+assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');
+assert(normalHtml.includes('href="./index.html"') && normalHtml.includes('href="./four-player.html"'), 'Normal chess page should link back to chooser and 4-player page');
+assert(normalScripts.length === 1, 'Expected one normal chess script block');
 
-new vm.Script(scripts[0], { filename: 'index-inline-script.js' });
+new vm.Script(scripts[0], { filename: 'four-player-inline-script.js' });
+new vm.Script(normalScripts[0], { filename: 'normal-chess-inline-script.js' });
 
 function createFakeDocument() {
   const allSquares = [];
