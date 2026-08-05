@@ -29,7 +29,9 @@ assert(html.includes('<svg class="piece-icon" viewBox="0 -32 ${i.w} ${i.h}"'), '
 assert(html.includes('piece.innerHTML=iconFor(p.type)'), 'Board pieces should render the SVG icon for each type');
 assert(html.includes('id="fullscreen-btn"'), 'Missing full screen button');
 assert(html.includes('requestFullscreen()'), 'Full screen button should call requestFullscreen');
-assert(html.includes('.game-container:fullscreen'), 'Missing full screen layout styles');
+assert(html.includes('.board-container:fullscreen'), 'Full screen layout should target only the board container');
+assert(!html.includes('.game-container:fullscreen'), 'Full screen should not include the full game/header/sidebar container');
+assert(html.includes('document.querySelector(\'.board-container\')'), 'Full screen button should open only the board container');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
