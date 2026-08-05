@@ -37,6 +37,12 @@ assert(html.includes('id="sound-btn"'), 'Missing sound effects toggle button');
 assert(html.includes('function playSound'), 'Missing sound effects helper');
 assert(html.includes('AudioContext||window.webkitAudioContext'), 'Sound effects should use browser WebAudio');
 assert(html.includes('playSound(this.gameOver||this.checkmatePlayer'), 'Moves should trigger sound effects after game state updates');
+assert(html.includes('id="host-room-btn"'), 'Missing host room button');
+assert(html.includes('id="join-room-code"'), 'Missing join room code input');
+assert(html.includes('PEERJS_CDN'), 'Room hosting should load PeerJS for WebRTC rooms');
+assert(html.includes('function serializeGame()'), 'Room hosting should serialize the authoritative game state');
+assert(html.includes('function broadcastState()'), 'Room hosting should broadcast host state to guests');
+assert(html.includes('sendMoveRequest'), 'Guests should send move requests to the host');
 assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
@@ -85,7 +91,10 @@ function loadGameForBehaviorTests() {
     console: { log() {}, error() {}, warn() {} },
     setTimeout(fn) { fn(); return 0; },
     document: createFakeDocument(),
-    window: {}
+    window: {},
+    location: { search: '' },
+    navigator: { clipboard: { writeText() {} } },
+    URLSearchParams
   };
   sandbox.window.document = sandbox.document;
   vm.createContext(sandbox);
@@ -131,6 +140,18 @@ function assertSinglePlayerAiControlsOtherPlayers(){
 
 assertSinglePlayerAiControlsOtherPlayers();
 
+function assertRoomStateSerializationRoundTrip(){
+  const app = loadGameForBehaviorTests();
+  const state = app.serializeGame();
+  assert(state.board && state.board.length === 14, 'Room state should include the board');
+  app.game.eliminated.add('red');
+  app.applyRemoteState({...state, eliminated:['blue'], turn:3});
+  assert(app.game.current === 'blue', 'Remote room state should update current turn');
+  assert(app.game.eliminated.has('blue'), 'Remote room state should restore eliminated players');
+}
+
+assertRoomStateSerializationRoundTrip();
+
 const requiredSnippets = [
   'const PLAYERS',
   'const SYMBOLS',
@@ -169,6 +190,16 @@ const requiredSnippets = [
   'toggleSound()',
   'unlockAudio()',
   'AudioContext',
+  'host-room-btn',
+  'join-room-code',
+  'copy-room-btn',
+  'PEERJS_CDN',
+  'serializeGame()',
+  'applyRemoteState',
+  'hostRoom()',
+  'joinRoom',
+  'broadcastState()',
+  'sendMoveRequest',
   'is disqualified',
   'status-check',
   'status-mate',

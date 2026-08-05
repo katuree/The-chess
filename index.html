@@ -124,9 +124,9 @@
     .move-row:nth-child(odd) { background: rgba(255,255,255,.04); }
     .game-status { min-height: 46px; padding: 10px; border-radius: 10px; background: rgba(0,0,0,.28); line-height: 1.45; }
     .controls { display: grid; gap: 10px; }
-    .mode-controls { display: grid; gap: 10px; }
-    .mode-controls label { display: grid; gap: 6px; color: #dce6ff; font-weight: 800; }
-    .mode-controls select {
+    .mode-controls, .room-controls { display: grid; gap: 10px; }
+    .mode-controls label, .room-controls label { display: grid; gap: 6px; color: #dce6ff; font-weight: 800; }
+    .mode-controls select, .room-controls input {
       width: 100%;
       border: 1px solid rgba(255,255,255,.22);
       border-radius: 10px;
@@ -135,9 +135,14 @@
       color: #fff;
       font-weight: 800;
     }
-    .ai-note { color: #aebce0; font-size: .86rem; line-height: 1.35; }
+    .room-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .room-code { color: #ffe45c; font-weight: 900; word-break: break-all; }
+    .ai-note, .room-note { color: #aebce0; font-size: .86rem; line-height: 1.35; }
     .btn { border: 0; border-radius: 10px; padding: 12px 16px; color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer; }
     #new-game-btn { background: linear-gradient(135deg, #376eff, #1944b8); }
+    #host-room-btn, #join-room-btn { background: linear-gradient(135deg, #16b984, #08735f); }
+    #copy-room-btn { background: linear-gradient(135deg, #f6b343, #b56713); }
+    #leave-room-btn { background: linear-gradient(135deg, #8b98ad, #4e5b70); }
     #sound-btn { background: linear-gradient(135deg, #7d5cff, #4729b8); }
     #undo-btn { background: linear-gradient(135deg, #ff4b4b, #b91f2b); }
     #fullscreen-btn {
@@ -213,6 +218,7 @@
         <section class="sidebar-section"><h3>Captured Pieces</h3><div id="captured-pieces" class="captured-list"></div></section>
         <section class="sidebar-section"><h3>Move Log</h3><div id="move-log" class="move-log"></div></section>
         <section class="sidebar-section"><h3>Game Mode</h3><div class="mode-controls"><label>Mode<select id="game-mode-select"><option value="local">Local 4 Player</option><option value="single">Single Player vs AI</option></select></label><label>Your Color<select id="human-player-select"><option value="yellow">Yellow</option><option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option></select></label><div class="ai-note">In single player, you control one color and AI moves the other players.</div></div></section>
+        <section class="sidebar-section"><h3>Room Hosting</h3><div class="room-controls"><div id="room-status" class="room-note">Offline</div><div id="room-code" class="room-code"></div><button id="host-room-btn" class="btn" type="button">Host Room</button><label>Join Code<input id="join-room-code" type="text" placeholder="Paste room code" autocomplete="off" /></label><div class="room-row"><button id="join-room-btn" class="btn" type="button">Join Room</button><button id="copy-room-btn" class="btn" type="button">Copy Invite</button></div><button id="leave-room-btn" class="btn" type="button">Leave Room</button><div class="room-note">Online rooms use peer-to-peer WebRTC. Host keeps the official game state.</div></div></section>
         <section class="sidebar-section"><h3>Game Status</h3><div id="game-status" class="game-status">Loading game...</div></section>
         <section class="sidebar-section controls"><button id="new-game-btn" class="btn">New Game</button><button id="sound-btn" class="btn" type="button">Sound: On</button><button id="undo-btn" class="btn" disabled>Undo Move</button></section>
       </aside>
@@ -414,10 +420,16 @@
     let aiThinking = false;
     let soundEnabled = true;
     let audioCtx = null;
+    let networkRole = 'offline';
+    let roomPeer = null;
+    let hostConnections = [];
+    let roomConn = null;
+    let roomId = '';
+    const PEERJS_CDN = 'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
     const AI_DELAY = 950;
     const PIECE_VALUES = { pawn:100, knight:320, bishop:330, rook:500, queen:900, king:12000 };
     window._game = game;
-    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, playSound, getAiDelay:()=>AI_DELAY };
+    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, playSound, getAiDelay:()=>AI_DELAY, serializeGame, applyRemoteState, hostRoom, joinRoom, leaveRoom };
 
     function zoneClass(r,c){
       if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
@@ -477,6 +489,7 @@
       document.getElementById('game-mode-select').value=gameMode;
       document.getElementById('human-player-select').value=humanPlayer;
       document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off';
+      updateRoomUi();
       const eliminatedList=[...game.eliminated].map(cap).join(', ');
       if(game.gameOver && game.winner){ status.textContent=`GAME OVER! ${cap(game.winner)} is the last player remaining.`; status.classList.add('status-mate'); }
       else if(game.checkmatePlayer){ status.textContent=`CHECKMATE! ${cap(game.checkmatePlayer)} is disqualified. Game continues with ${cap(game.current)}.${eliminatedList ? ' Eliminated: '+eliminatedList+'.' : ''}`; status.classList.add('status-mate'); }
@@ -496,8 +509,13 @@
       if(game.selected){
         const [sr,sc]=game.selected;
         if(game.targets.some(([tr,tc])=>tr===r&&tc===c)){
+          if(networkRole==='guest'){
+            sendMoveRequest(sr,sc,r,c,null);
+            game.selected=null; game.targets=[]; render(); return;
+          }
           const result=game.move(sr,sc,r,c);
           if(result==='promotion') showPromotion();
+          else if(result) broadcastState();
           game.selected=null; game.targets=[]; render(); return;
         }
         game.selected=null; game.targets=[];
@@ -507,7 +525,7 @@
     }
     function showPromotion(){
       const modal=document.getElementById('promotion-modal'); const box=document.getElementById('promotion-choices'); box.innerHTML='';
-      for(const type of ['queen','rook','bishop','knight']){ const el=document.createElement('div'); el.className='promotion-choice'; const piece=document.createElement('span'); piece.className=`chess-piece piece-${game.current} piece-${type}`; piece.innerHTML=iconFor(type); el.appendChild(piece); el.onclick=()=>{ const p=game.pendingPromotion; game.move(p.fr,p.fc,p.tr,p.tc,type); modal.classList.add('hidden'); render(); }; box.appendChild(el); }
+      for(const type of ['queen','rook','bishop','knight']){ const el=document.createElement('div'); el.className='promotion-choice'; const piece=document.createElement('span'); piece.className=`chess-piece piece-${game.current} piece-${type}`; piece.innerHTML=iconFor(type); el.appendChild(piece); el.onclick=()=>{ const p=game.pendingPromotion; game.move(p.fr,p.fc,p.tr,p.tc,type); broadcastState(); modal.classList.add('hidden'); render(); }; box.appendChild(el); }
       modal.classList.remove('hidden');
     }
     function isSinglePlayer(){ return gameMode==='single'; }
@@ -538,6 +556,7 @@
       aiThinking=false;
       if(!move){ game.updateCheckState(); render(); return; }
       game.move(move.from[0],move.from[1],move.to[0],move.to[1],move.promo);
+      broadcastState();
       render();
     }
     function scheduleAiTurn(){
@@ -550,12 +569,132 @@
       game.newGame();
       game.selected=null;
       game.targets=[];
+      broadcastState();
       render();
     }
     function setSinglePlayerMode(mode='single', human='yellow'){
       gameMode=mode;
       humanPlayer=human;
       restartForMode();
+    }
+    function serializeGame(){
+      return {
+        board: game.board,
+        turn: game.turn,
+        moveCount: game.moveCount,
+        log: game.log,
+        captured: game.captured,
+        lastMove: game.lastMove,
+        pendingPromotion: null,
+        gameOver: game.gameOver,
+        winner: game.winner,
+        checkPlayer: game.checkPlayer,
+        checkmatePlayer: game.checkmatePlayer,
+        eliminated: [...game.eliminated]
+      };
+    }
+    function applyRemoteState(state){
+      if(!state) return;
+      game.board=state.board;
+      game.turn=state.turn;
+      game.moveCount=state.moveCount;
+      game.log=state.log||[];
+      game.captured=state.captured||[];
+      game.lastMove=state.lastMove||null;
+      game.pendingPromotion=null;
+      game.gameOver=!!state.gameOver;
+      game.winner=state.winner||null;
+      game.checkPlayer=state.checkPlayer||null;
+      game.checkmatePlayer=state.checkmatePlayer||null;
+      game.eliminated=new Set(state.eliminated||[]);
+      game.selected=null; game.targets=[]; aiThinking=false;
+      render();
+    }
+    function updateRoomUi(){
+      const status=document.getElementById('room-status');
+      const code=document.getElementById('room-code');
+      if(!status||!code) return;
+      const peers=hostConnections.filter(c=>c.open).length;
+      code.textContent=roomId ? `Room: ${roomId}` : '';
+      status.textContent=networkRole==='host' ? `Hosting room. Players connected: ${peers}` : networkRole==='guest' ? `Joined room ${roomId || ''}` : 'Offline';
+      document.getElementById('copy-room-btn').disabled=!roomId;
+      document.getElementById('leave-room-btn').disabled=networkRole==='offline';
+    }
+    function makeRoomCode(){ return `thechess-${Math.random().toString(36).slice(2,8)}`; }
+    function loadPeerJs(){
+      if(window.Peer) return Promise.resolve();
+      return new Promise((resolve,reject)=>{
+        const existing=document.querySelector('script[data-peerjs]');
+        if(existing){ existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
+        const script=document.createElement('script');
+        script.src=PEERJS_CDN;
+        script.dataset.peerjs='true';
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error('PeerJS failed to load'));
+        document.head.appendChild(script);
+      });
+    }
+    function connectHostConn(conn){
+      hostConnections.push(conn);
+      conn.on('open',()=>{ conn.send({type:'state', state:serializeGame()}); updateRoomUi(); });
+      conn.on('data',msg=>{
+        if(msg?.type==='move'){
+          const ok=game.move(msg.fr,msg.fc,msg.tr,msg.tc,msg.promo||null);
+          if(ok){ render(); broadcastState(); }
+        }
+      });
+      conn.on('close',()=>{ hostConnections=hostConnections.filter(c=>c!==conn); updateRoomUi(); });
+    }
+    function broadcastState(){
+      if(networkRole!=='host') return;
+      const packet={type:'state', state:serializeGame()};
+      for(const conn of hostConnections.filter(c=>c.open)) conn.send(packet);
+      updateRoomUi();
+    }
+    function sendMoveRequest(fr,fc,tr,tc,promo=null){
+      if(networkRole==='guest' && roomConn?.open) roomConn.send({type:'move',fr,fc,tr,tc,promo});
+    }
+    async function hostRoom(){
+      await loadPeerJs();
+      leaveRoom(false);
+      roomId=makeRoomCode();
+      networkRole='host';
+      roomPeer=new Peer(roomId);
+      roomPeer.on('open',()=>{ updateRoomUi(); copyRoomInvite(); });
+      roomPeer.on('connection',connectHostConn);
+      roomPeer.on('error',err=>{ document.getElementById('room-status').textContent=`Room error: ${err.type||err.message}`; });
+      updateRoomUi();
+    }
+    async function joinRoom(code=null){
+      await loadPeerJs();
+      leaveRoom(false);
+      roomId=(code || document.getElementById('join-room-code').value || new URLSearchParams(location.search).get('room') || '').trim();
+      if(!roomId){ document.getElementById('room-status').textContent='Enter a room code first.'; return; }
+      networkRole='guest';
+      roomPeer=new Peer();
+      roomPeer.on('open',()=>{
+        roomConn=roomPeer.connect(roomId,{reliable:true});
+        roomConn.on('open',updateRoomUi);
+        roomConn.on('data',msg=>{ if(msg?.type==='state') applyRemoteState(msg.state); });
+        roomConn.on('close',()=>{ networkRole='offline'; updateRoomUi(); });
+      });
+      roomPeer.on('error',err=>{ document.getElementById('room-status').textContent=`Room error: ${err.type||err.message}`; });
+      updateRoomUi();
+    }
+    function copyRoomInvite(){
+      if(!roomId) return;
+      const url=new URL(location.href);
+      url.searchParams.set('room',roomId);
+      navigator.clipboard?.writeText(url.toString());
+      document.getElementById('room-status').textContent=`Invite copied: ${roomId}`;
+    }
+    function leaveRoom(renderAfter=true){
+      for(const conn of hostConnections) conn.close?.();
+      hostConnections=[];
+      roomConn?.close?.(); roomConn=null;
+      roomPeer?.destroy?.(); roomPeer=null;
+      networkRole='offline'; roomId='';
+      if(renderAfter) render(); else updateRoomUi();
     }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
     function updateFullscreenButton(){
@@ -579,11 +718,17 @@
     document.getElementById('sound-btn').addEventListener('click',toggleSound);
     document.getElementById('game-mode-select').addEventListener('change',e=>{ unlockAudio(); gameMode=e.target.value; restartForMode(); });
     document.getElementById('human-player-select').addEventListener('change',e=>{ unlockAudio(); humanPlayer=e.target.value; restartForMode(); });
+    document.getElementById('host-room-btn').addEventListener('click',()=>hostRoom());
+    document.getElementById('join-room-btn').addEventListener('click',()=>joinRoom());
+    document.getElementById('copy-room-btn').addEventListener('click',copyRoomInvite);
+    document.getElementById('leave-room-btn').addEventListener('click',()=>leaveRoom());
     document.getElementById('fullscreen-btn').addEventListener('click',toggleFullscreen);
     document.addEventListener('fullscreenchange',updateFullscreenButton);
     document.getElementById('undo-btn').addEventListener('click',()=>{ aiThinking=false; game.undo(); render(); });
     document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='u'&&!aiThinking){game.undo();render();} if(e.key.toLowerCase()==='n'){restartForMode();} if(e.key==='Escape'){game.selected=null;game.targets=[];document.getElementById('promotion-modal').classList.add('hidden');render();} });
     render();
+    const inviteRoom = new URLSearchParams(location.search).get('room');
+    if(inviteRoom){ document.getElementById('join-room-code').value=inviteRoom; joinRoom(inviteRoom); }
     console.log('[Four-Handed Chess II] boot ok', {squares: document.querySelectorAll('.square').length, pieces: Array.from(document.querySelectorAll('.square')).filter(s=>s.textContent.trim()).length});
   })();
   </script>
