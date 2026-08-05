@@ -21,9 +21,12 @@ assert(!html.includes("return 'green-zone'"), 'Squares near green pieces should 
 assert(!html.includes("return 'yellow-zone'"), 'Squares near yellow pieces should use the normal chess pattern');
 assert(!html.includes("return 'red-zone'"), 'Squares near red pieces should use the normal chess pattern');
 assert(!html.includes("return 'blue-zone'"), 'Squares near blue pieces should use the normal chess pattern');
-assert(html.includes('radial-gradient(circle at 32% 24%'), 'High-quality piece styling should include glossy radial highlights');
+assert(html.includes('radial-gradient(circle at 30% 22%'), 'High-quality piece styling should include glossy radial highlights');
 assert(html.includes('color-mix(in srgb'), 'High-quality piece styling should include blended 3D colors');
-assert(html.includes('color: #090b10;'), 'Reference-style icons should render as dark silhouettes');
+assert(html.includes('color: #050505;'), 'Reference-style icons should render as dark silhouettes');
+assert(html.includes('const ICONS ='), 'Reference-style pieces should use custom SVG icon shapes, not only font glyphs');
+assert(html.includes('<svg class="piece-icon"'), 'Reference-style pieces should render inline SVG icons');
+assert(html.includes('piece.innerHTML=iconFor(p.type)'), 'Board pieces should render the SVG icon for each type');
 assert(html.includes('id="fullscreen-btn"'), 'Missing full screen button');
 assert(html.includes('requestFullscreen()'), 'Full screen button should call requestFullscreen');
 assert(html.includes('.game-container:fullscreen'), 'Missing full screen layout styles');
@@ -128,7 +131,9 @@ const requiredSnippets = [
   'eliminated = new Set()',
   'advanceTurn()',
   'eliminated-piece',
-  'className=`chess-piece piece-${p.player} piece-${p.type}`',
+  'const ICONS =',
+  'iconFor(type)',
+  'piece.innerHTML=iconFor(p.type)',
   'captured-piece piece-${p.player}',
   'toggleFullscreen()',
   'fullscreenchange',
