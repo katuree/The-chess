@@ -1,1 +1,80 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Normal Chess Room - The Chess</title><style>*{box-sizing:border-box;margin:0;padding:0}body{min-height:100vh;font-family:"Segoe UI",Arial,sans-serif;color:#f5f7ff;background:radial-gradient(circle at top,#1b3159 0%,#111a31 48%,#081020 100%);display:grid;place-items:center;padding:24px}.panel{width:min(620px,100%);padding:28px;border:1px solid rgba(255,255,255,.16);border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.05));box-shadow:0 24px 75px rgba(0,0,0,.42);display:grid;gap:14px;text-align:center}.top-nav{margin-bottom:4px}.top-nav a{color:#ffe45c;text-decoration:none;font-weight:900}.btn{border:0;border-radius:16px;padding:18px 20px;color:#fff;cursor:pointer;text-align:center;font-size:1.12rem;font-weight:900;background:linear-gradient(135deg,#376eff,#1944b8);text-decoration:none}.btn.host{background:linear-gradient(135deg,#16b984,#08735f)}.btn.quick{background:linear-gradient(135deg,#f6b343,#b56713)}input{width:100%;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:14px 16px;background:#101a33;color:#fff;font-weight:800}.status{min-height:44px;padding:10px;border-radius:10px;background:rgba(0,0,0,.28);line-height:1.45;color:#dce6ff}.row{display:grid;grid-template-columns:1fr auto;gap:10px}</style></head><body><main class="panel"><nav class="top-nav"><a href="./normal-chess.html">← Normal Chess</a></nav><h1>Room</h1><button id="normal-room-host-btn" class="btn host" type="button">Host Room</button><div class="row"><input id="normal-room-code-input" placeholder="Paste room code" autocomplete="off"/><button id="normal-room-join-btn" class="btn" type="button">Join</button></div><div id="normal-room-status" class="status">Host a private normal chess room or join with a room code.</div></main><script>(()=>{const input=document.getElementById('normal-room-code-input');const status=document.getElementById('normal-room-status');function code(){return `normalchess-${Math.random().toString(36).slice(2,8)}`;}function go(role,room){location.href=`./normal-chess.html?online=${role}&room=${encodeURIComponent(room)}`;}document.getElementById('normal-room-host-btn').addEventListener('click',()=>{const room=code(); status.textContent=`Creating room ${room}...`; go('host',room);});document.getElementById('normal-room-join-btn').addEventListener('click',()=>{const room=input.value.trim(); if(!room){status.textContent='Enter a room code first.';return;} go('guest',room);});})();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Normal Chess Room - The Chess</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    .hidden{display:none!important}
+    body{min-height:100vh;font-family:"Segoe UI",Arial,sans-serif;color:#f5f7ff;background:radial-gradient(circle at top,#1b3159 0%,#111a31 48%,#081020 100%);display:grid;place-items:center;padding:24px}
+    .panel{width:min(640px,100%);padding:28px;border:1px solid rgba(255,255,255,.16);border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.05));box-shadow:0 24px 75px rgba(0,0,0,.42);display:grid;gap:14px;text-align:center}
+    .top-nav{margin-bottom:4px}.top-nav a{color:#ffe45c;text-decoration:none;font-weight:900}
+    .btn{border:0;border-radius:16px;padding:18px 20px;color:#fff;cursor:pointer;text-align:center;font-size:1.12rem;font-weight:900;background:linear-gradient(135deg,#376eff,#1944b8);text-decoration:none}
+    .btn.host{background:linear-gradient(135deg,#16b984,#08735f)}.btn.start{background:linear-gradient(135deg,#f6b343,#b56713)}.btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.3)}
+    input{width:100%;border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:14px 16px;background:#101a33;color:#fff;font-weight:800}
+    .status{min-height:48px;padding:12px;border-radius:10px;background:rgba(0,0,0,.28);line-height:1.45;color:#dce6ff}
+    .row{display:grid;grid-template-columns:1fr auto;gap:10px}.host-panel{display:grid;gap:10px}
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <nav class="top-nav"><a href="./normal-chess.html">← Normal Chess</a></nav>
+    <h1>Room</h1>
+    <button id="normal-room-host-btn" class="btn host" type="button">Host Room</button>
+    <div class="host-panel hidden" id="normal-room-host-panel">
+      <input id="normal-room-code-output" readonly aria-label="Room code" />
+      <button id="normal-room-copy-btn" class="btn" type="button">Copy Invite</button>
+      <button id="normal-room-start-btn" class="btn start" type="button" disabled>Start Game</button>
+    </div>
+    <div class="row">
+      <input id="normal-room-code-input" placeholder="Paste room code" autocomplete="off" />
+      <button id="normal-room-join-btn" class="btn" type="button">Join</button>
+    </div>
+    <div id="normal-room-status" class="status">Host a private normal chess room or join with a room code. The game will not open until the host clicks Start Game.</div>
+  </main>
+  <script>
+  (()=>{
+    const PEERJS_CDN='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
+    const input=document.getElementById('normal-room-code-input');
+    const output=document.getElementById('normal-room-code-output');
+    const status=document.getElementById('normal-room-status');
+    const hostPanel=document.getElementById('normal-room-host-panel');
+    const startBtn=document.getElementById('normal-room-start-btn');
+    const peers=[];
+    let roomCode='', peer=null, conn=null;
+    function setStatus(text){ status.textContent=text; }
+    function code(){ return `normalchess-${Math.random().toString(36).slice(2,8)}`; }
+    function gameUrl(role,room){ return `./normal-chess.html?online=${role}&room=${encodeURIComponent(room)}`; }
+    function loadPeerJs(){ if(window.Peer) return Promise.resolve(); return new Promise((resolve,reject)=>{ const script=document.createElement('script'); script.src=PEERJS_CDN; script.onload=resolve; script.onerror=()=>reject(new Error('PeerJS failed to load')); document.head.appendChild(script); }); }
+    async function hostRoom(){
+      await loadPeerJs();
+      roomCode=code(); output.value=roomCode; hostPanel.classList.remove('hidden'); startBtn.disabled=false;
+      peer=new Peer(roomCode);
+      peer.on('open',()=>setStatus(`Room ${roomCode} is ready. Share the code, wait for your friend, then click Start Game.`));
+      peer.on('connection',c=>{ peers.push(c); c.on('open',()=>setStatus(`${peers.filter(p=>p.open).length} player joined. Click Start Game when ready.`)); c.on('close',()=>setStatus('A player left the lobby.')); });
+      peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
+    }
+    async function joinRoom(){
+      await loadPeerJs();
+      roomCode=input.value.trim();
+      if(!roomCode){ setStatus('Enter a room code first.'); return; }
+      setStatus('Joining room... waiting for host to start.');
+      peer=new Peer();
+      peer.on('open',()=>{ conn=peer.connect(roomCode,{reliable:true}); conn.on('open',()=>setStatus('Joined room. Waiting for host to start the game...')); conn.on('data',msg=>{ if(msg?.type==='start') location.href=gameUrl('guest',roomCode); }); conn.on('close',()=>setStatus('Host disconnected before starting.')); });
+      peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
+    }
+    function startGame(){
+      if(!roomCode) return;
+      for(const p of peers.filter(p=>p.open)) p.send({type:'start'});
+      setStatus('Starting game...');
+      setTimeout(()=>{ location.href=gameUrl('host',roomCode); },250);
+    }
+    document.getElementById('normal-room-host-btn').addEventListener('click',hostRoom);
+    document.getElementById('normal-room-join-btn').addEventListener('click',joinRoom);
+    startBtn.addEventListener('click',startGame);
+    document.getElementById('normal-room-copy-btn').addEventListener('click',()=>navigator.clipboard?.writeText(roomCode).then(()=>setStatus(`Copied room code ${roomCode}.`)).catch(()=>setStatus(`Room code: ${roomCode}`)));
+  })();
+  </script>
+</body>
+</html>

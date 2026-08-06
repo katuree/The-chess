@@ -81,8 +81,10 @@ assert(!normalHtml.includes('Choose how you want to play') && !normalHtml.includ
 assert(normalHtml.includes('id="normal-game-screen"') && normalHtml.includes('class="game-container hidden"'), 'Normal chess game screen should be hidden until mode selection');
 assert(normalHtml.includes('startNormalGame') && normalHtml.includes('chooseNormalAiMove') && normalHtml.includes('NORMAL_AI_DELAY'), 'Normal chess single player should start from menu and include AI opponent');
 assert(normalHtml.includes('NORMAL_PEERJS_CDN') && normalHtml.includes('NORMAL_QUICK_MATCH_ROOM') && normalHtml.includes('sendNormalMoveRequest'), 'Normal chess gameplay should keep hidden room/matchmaking networking code for separate pages');
-assert(normalRoomHtml.includes('id="normal-room-host-btn"') && normalRoomHtml.includes('id="normal-room-join-btn"') && normalRoomHtml.includes('normal-chess.html?online='), 'Normal room page should offer host/join before opening gameplay');
-assert(normalQuickHtml.includes('id="normal-quick-status"') && normalQuickHtml.includes('Finding players') && normalQuickHtml.includes('online=quick'), 'Normal quick match page should show finding players before opening gameplay');
+assert(normalRoomHtml.includes('id="normal-room-host-btn"') && normalRoomHtml.includes('id="normal-room-join-btn"') && normalRoomHtml.includes('id="normal-room-start-btn"'), 'Normal room page should offer host/join plus a host Start Game button');
+assert(normalRoomHtml.includes('The game will not open until the host clicks Start Game') && normalRoomHtml.includes("{type:'start'}"), 'Normal room should keep players in the lobby until the host starts');
+assert(normalQuickHtml.includes('id="normal-quick-status"') && normalQuickHtml.includes('Finding players') && normalQuickHtml.includes('Waiting for another player'), 'Normal quick match page should show finding/waiting state before gameplay');
+assert(!normalQuickHtml.includes('setTimeout(()=>{location.href') && normalQuickHtml.includes("conn.on('open'") && normalQuickHtml.includes("{type:'start'}"), 'Normal quick match must not auto-open gameplay before another player connects');
 assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');
 assert(normalHtml.includes('background:#f0d9b5') && normalHtml.includes('background:#b58863'), 'Normal chess board should use cleaner classic tile colors');
 assert(normalHtml.includes('data-label'), 'Normal chess board should show coordinate labels on edge tiles');
