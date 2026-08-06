@@ -21,6 +21,10 @@
     .btn.good { background: linear-gradient(135deg, #16b984, #08735f); }
     .btn.warn { background: linear-gradient(135deg, #f6b343, #b56713); }
     .btn.google { background: #fff; color: #111827; }
+    .google-account-card { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.16); }
+    .google-account-card img { width: 44px; height: 44px; border-radius: 999px; object-fit: cover; background: #233150; }
+    .google-account-card strong, .google-account-card span { display: block; overflow-wrap: anywhere; }
+    .google-account-card span { color: #dce6ff; font-size: .92rem; }
     .status { min-height: 46px; padding: 12px; border-radius: 12px; background: rgba(0,0,0,.28); color: #dce6ff; line-height: 1.45; }
     .status[data-kind="ok"] { color: #9ff5c0; }
     .status[data-kind="warn"] { color: #ffe08a; }
@@ -62,6 +66,13 @@
 
       <div id="username-panel" class="row hidden">
         <h2>Choose username</h2>
+        <div id="username-google-account" class="google-account-card hidden">
+          <img id="username-google-photo" alt="Google account photo" />
+          <div>
+            <strong id="username-google-name"></strong>
+            <span id="username-google-email"></span>
+          </div>
+        </div>
         <p>This name will identify you in rooms, quick match, and future player profiles.</p>
         <input id="username-input" type="text" placeholder="username" maxlength="18" autocomplete="nickname" />
         <button id="save-username-btn" class="btn good" type="button">Save Username</button>
@@ -69,6 +80,13 @@
 
       <div id="profile-panel" class="row hidden">
         <h2>Welcome, @<span id="profile-name"></span></h2>
+        <div id="profile-google-account" class="google-account-card hidden">
+          <img id="profile-google-photo" alt="Google account photo" />
+          <div>
+            <strong id="profile-google-name"></strong>
+            <span id="profile-google-email"></span>
+          </div>
+        </div>
         <p id="profile-email"></p>
         <div class="split">
           <button id="enter-game-btn" class="btn good" type="button">Enter Game</button>
@@ -78,6 +96,6 @@
     </section>
   </main>
   <script src="./scripts/firebase-config.js?v=auth-form-2"></script>
-  <script src="./scripts/auth.js?v=google-status-1"></script>
+  <script src="./scripts/auth.js?v=google-account-1"></script>
 </body>
 </html>

@@ -50,6 +50,30 @@
     location.href = nextTarget.startsWith('http') ? './index.html' : nextTarget;
   }
 
+  function googleProvider() {
+    const { GoogleAuthProvider } = state.modules.authMod;
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return provider;
+  }
+
+  function renderAccount(prefix, user) {
+    const card = $(`${prefix}-google-account`);
+    if (!card || !user) return;
+    const name = user.displayName || user.email || 'Google account';
+    $(`${prefix}-google-name`).textContent = name;
+    $(`${prefix}-google-email`).textContent = user.email || '';
+    const photo = $(`${prefix}-google-photo`);
+    if (user.photoURL) {
+      photo.src = user.photoURL;
+      photo.classList.remove('hidden');
+    } else {
+      photo.removeAttribute('src');
+      photo.classList.add('hidden');
+    }
+    card.classList.remove('hidden');
+  }
+
   async function loadFirebase() {
     const [appMod, authMod, dbMod] = await Promise.all([
       import('https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js'),
@@ -86,14 +110,16 @@
     }
     const profile = await profileFor(user);
     if (!profile?.username) {
+      renderAccount('username', user);
       show(usernamePanel);
-      setStatus('Choose a username to finish your profile.', 'info');
+      setStatus(`Signed in as ${user.email || user.displayName || 'your Google account'}. Choose a username to finish your profile.`, 'info');
       return;
     }
     $('profile-name').textContent = profile.username;
     $('profile-email').textContent = user.email || 'Google account';
+    renderAccount('profile', user);
     show(profilePanel);
-    setStatus('Login complete. You can enter the game.', 'ok');
+    setStatus(`Login complete as ${user.email || user.displayName || profile.username}. You can enter the game.`, 'ok');
   }
 
   async function signUpEmail() {
@@ -124,8 +150,16 @@
 
   async function signInGoogle() {
     if (!requireFirebaseConfig('google')) return;
-    const { GoogleAuthProvider, signInWithPopup } = state.modules.authMod;
-    await signInWithPopup(state.auth, new GoogleAuthProvider());
+    const { signInWithPopup, signInWithRedirect } = state.modules.authMod;
+    const provider = googleProvider();
+    try {
+      await signInWithPopup(state.auth, provider);
+    } catch (error) {
+      const mobileOrPopupBlocked = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(error.code);
+      if (!mobileOrPopupBlocked) throw error;
+      setStatus('Opening Google account sign-in...', 'info');
+      await signInWithRedirect(state.auth, provider);
+    }
   }
 
   async function resendVerification() {
@@ -194,6 +228,7 @@
       return;
     }
     await loadFirebase();
+    await state.modules.authMod.getRedirectResult(state.auth).catch(showError);
     state.modules.authMod.onAuthStateChanged(state.auth, user => refreshRoute(user).catch(showError));
   }
 
