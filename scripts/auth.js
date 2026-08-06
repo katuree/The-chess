@@ -31,6 +31,18 @@
     panel.classList.remove('hidden');
   }
 
+  function showSetupForm() {
+    [setupPanel, authPanel].forEach(el => el.classList.remove('hidden'));
+    [verifyPanel, usernamePanel, profilePanel].forEach(el => el.classList.add('hidden'));
+  }
+
+  function requireFirebaseConfig() {
+    if (state.modules) return true;
+    showSetupForm();
+    setStatus('Enter your email below, but real signup/login needs Firebase config first.', 'warn');
+    return false;
+  }
+
   function gotoNext() {
     location.href = nextTarget.startsWith('http') ? './index.html' : nextTarget;
   }
@@ -82,6 +94,7 @@
   }
 
   async function signUpEmail() {
+    if (!requireFirebaseConfig()) return;
     const { createUserWithEmailAndPassword, sendEmailVerification } = state.modules.authMod;
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -95,6 +108,7 @@
   }
 
   async function signInEmail() {
+    if (!requireFirebaseConfig()) return;
     const { signInWithEmailAndPassword } = state.modules.authMod;
     const email = emailInput.value.trim();
     const password = passwordInput.value;
@@ -106,11 +120,13 @@
   }
 
   async function signInGoogle() {
+    if (!requireFirebaseConfig()) return;
     const { GoogleAuthProvider, signInWithPopup } = state.modules.authMod;
     await signInWithPopup(state.auth, new GoogleAuthProvider());
   }
 
   async function resendVerification() {
+    if (!requireFirebaseConfig()) return;
     const { sendEmailVerification } = state.modules.authMod;
     if (!state.user) return;
     await sendEmailVerification(state.user);
@@ -118,6 +134,7 @@
   }
 
   async function saveUsername() {
+    if (!requireFirebaseConfig()) return;
     const { doc, getDoc, setDoc, serverTimestamp } = state.modules.dbMod;
     const username = usernameInput.value.trim().replace(/^@+/, '').toLowerCase();
     if (!/^[a-z0-9_]{3,18}$/.test(username)) {
@@ -143,6 +160,7 @@
   }
 
   async function signOut() {
+    if (!requireFirebaseConfig()) return;
     await state.modules.authMod.signOut(state.auth);
   }
 
@@ -168,8 +186,8 @@
   async function boot() {
     bind();
     if (!window.THE_CHESS_FIREBASE_CONFIGURED) {
-      show(setupPanel);
-      setStatus('Firebase is not configured yet. Paste the Firebase web config in scripts/firebase-config.js.', 'warn');
+      showSetupForm();
+      setStatus('Enter your email below. Firebase config is still needed before signup/login can send verification mail.', 'warn');
       return;
     }
     await loadFirebase();
