@@ -20,6 +20,8 @@
     .mode-grid { display: grid; gap: 14px; }
     .mode-card { border: 0; border-radius: 16px; padding: 18px 20px; background: linear-gradient(135deg, #16b984, #08735f); color: #fff; cursor: pointer; text-align: center; font-size: 1.2rem; font-weight: 900; transition: transform .16s ease, filter .16s ease; }
     .mode-card.multi { background: linear-gradient(135deg, #376eff, #1944b8); }
+    .mode-card.quick { background: linear-gradient(135deg, #f6b343, #b56713); }
+    .mode-card.room { background: linear-gradient(135deg, #7d5cff, #4729b8); }
     .mode-card:hover { transform: translateY(-3px); filter: brightness(1.08); }
     .top-nav { margin-bottom: 12px; }
     .top-nav a { color: #ffe45c; text-decoration: none; font-weight: 900; }
@@ -210,8 +212,10 @@
     <div class="menu-panel">
       <nav class="top-nav"><a href="./index.html">← Choose Game</a> · <a href="./normal-chess.html">Normal Chess</a></nav>
       <div class="mode-grid">
-        <button id="four-single-player-btn" class="mode-card single" type="button">Single Player</button>
-        <button id="four-multi-player-btn" class="mode-card multi" type="button">Multiple Player</button>
+        <button id="four-player-vs-ai-btn" class="mode-card single" type="button">Player vs AI</button>
+        <button id="four-local-4-player-btn" class="mode-card multi" type="button">Local 4 Player</button>
+        <button id="four-quick-match-btn" class="mode-card quick" type="button">Quick Match</button>
+        <button id="four-room-btn" class="mode-card room" type="button">Room</button>
       </div>
     </div>
   </section>
@@ -445,10 +449,12 @@
     let roomConn = null;
     let roomId = '';
     const PEERJS_CDN = 'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
+    const QUICK_MATCH_ROOM = 'thechess-quick-match';
     const AI_DELAY = 950;
     const PIECE_VALUES = { pawn:100, knight:320, bishop:330, rook:500, queen:900, king:12000 };
+
     window._game = game;
-    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, startFourPlayerGame, showFourPlayerModeMenu, playSound, getAiDelay:()=>AI_DELAY, serializeGame, applyRemoteState, hostRoom, joinRoom, leaveRoom };
+    window.FourHandedChess = { game, Game, render, chooseAiMove, performAiTurn, setSinglePlayerMode, startFourPlayerGame, showFourPlayerModeMenu, playSound, getAiDelay:()=>AI_DELAY, serializeGame, applyRemoteState, hostRoom, joinRoom, quickMatch, leaveRoom, broadcastState, sendMoveRequest };
 
     function zoneClass(r,c){
       if(isPlayable(r,c)) return `core ${(r+c)%2?'light':'dark'}`;
@@ -673,15 +679,30 @@
     function sendMoveRequest(fr,fc,tr,tc,promo=null){
       if(networkRole==='guest' && roomConn?.open) roomConn.send({type:'move',fr,fc,tr,tc,promo});
     }
-    async function hostRoom(){
+    async function hostRoom(code=null, copyInvite=true){
       await loadPeerJs();
       leaveRoom(false);
-      roomId=makeRoomCode();
+      roomId=code || makeRoomCode();
       networkRole='host';
       roomPeer=new Peer(roomId);
-      roomPeer.on('open',()=>{ updateRoomUi(); copyRoomInvite(); });
+      roomPeer.on('open',()=>{ updateRoomUi(); if(copyInvite) copyRoomInvite(); });
       roomPeer.on('connection',connectHostConn);
       roomPeer.on('error',err=>{ document.getElementById('room-status').textContent=`Room error: ${err.type||err.message}`; });
+      updateRoomUi();
+    }
+    async function quickMatch(){
+      document.getElementById('room-status').textContent='Quick match: looking for players...';
+      await loadPeerJs();
+      leaveRoom(false);
+      roomId=QUICK_MATCH_ROOM;
+      networkRole='host';
+      roomPeer=new Peer(QUICK_MATCH_ROOM);
+      roomPeer.on('open',()=>{ document.getElementById('room-status').textContent='Quick match: waiting for another player...'; updateRoomUi(); });
+      roomPeer.on('connection',connectHostConn);
+      roomPeer.on('error',err=>{
+        if(err.type==='unavailable-id') joinRoom(QUICK_MATCH_ROOM);
+        else document.getElementById('room-status').textContent=`Quick match error: ${err.type||err.message}`;
+      });
       updateRoomUi();
     }
     async function joinRoom(code=null){
@@ -740,6 +761,8 @@
       document.getElementById('four-player-mode-menu').classList.add('hidden');
       document.getElementById('four-player-game-screen').classList.remove('hidden');
       restartForMode();
+      if(mode==='quick') quickMatch();
+      if(mode==='room') hostRoom();
     }
     function showFourPlayerModeMenu(e){
       e?.preventDefault();
@@ -747,8 +770,10 @@
       document.getElementById('four-player-game-screen').classList.add('hidden');
       document.getElementById('four-player-mode-menu').classList.remove('hidden');
     }
-    document.getElementById('four-single-player-btn').addEventListener('click',()=>startFourPlayerGame('single'));
-    document.getElementById('four-multi-player-btn').addEventListener('click',()=>startFourPlayerGame('multi'));
+    document.getElementById('four-player-vs-ai-btn').addEventListener('click',()=>startFourPlayerGame('single'));
+    document.getElementById('four-local-4-player-btn').addEventListener('click',()=>startFourPlayerGame('multi'));
+    document.getElementById('four-quick-match-btn').addEventListener('click',()=>startFourPlayerGame('quick'));
+    document.getElementById('four-room-btn').addEventListener('click',()=>startFourPlayerGame('room'));
     document.getElementById('four-change-mode-link').addEventListener('click',showFourPlayerModeMenu);
     document.getElementById('new-game-btn').addEventListener('click',()=>{ unlockAudio(); restartForMode(); });
     document.getElementById('sound-btn').addEventListener('click',toggleSound);

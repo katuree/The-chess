@@ -18,8 +18,11 @@ assert(landingHtml.includes('id="four-player-link"') && landingHtml.includes('./
 assert(landingHtml.includes('id="normal-chess-link"') && landingHtml.includes('./normal-chess.html'), 'Landing page should link to Normal Chess page');
 assert(landingHtml.includes('Choose which chess webpage'), 'Site root should open a game choice page');
 assert(html.includes('href="./index.html"') && html.includes('href="./normal-chess.html"'), '4-player chess page should link back to chooser and normal chess page');
-assert(html.includes('id="four-player-mode-menu"'), '4-player chess should open with a minimal single/multiple player menu before the board');
-assert(html.includes('id="four-single-player-btn"') && html.includes('id="four-multi-player-btn"'), '4-player chess menu should have Single Player and Multiple Player buttons');
+assert(html.includes('id="four-player-mode-menu"'), '4-player chess should open with a minimal mode menu before the board');
+assert(html.includes('id="four-player-vs-ai-btn"') && html.includes('Player vs AI'), '4-player chess menu should have a Player vs AI button');
+assert(html.includes('id="four-local-4-player-btn"') && html.includes('Local 4 Player'), '4-player chess menu should have a Local 4 Player button');
+assert(html.includes('id="four-quick-match-btn"') && html.includes('Quick Match'), '4-player chess menu should have a Quick Match button');
+assert(html.includes('id="four-room-btn"') && html.includes('Room'), '4-player chess menu should have a Room button');
 assert(html.includes('id="four-player-game-screen"') && html.includes('class="game-container hidden"'), '4-player chess game screen should be hidden until mode selection');
 assert(html.includes('startFourPlayerGame') && html.includes('showFourPlayerModeMenu'), '4-player chess should have mode-menu start/change functions');
 assert(!html.includes('Start Single Player') && !html.includes('Start Multiple Player'), '4-player chess mode menu should stay minimal with buttons only');
