@@ -36,10 +36,13 @@
     [verifyPanel, usernamePanel, profilePanel].forEach(el => el.classList.add('hidden'));
   }
 
-  function requireFirebaseConfig() {
+  function requireFirebaseConfig(feature = 'login') {
     if (state.modules) return true;
     showSetupForm();
-    setStatus('Email form is ready. Firebase config is needed before this can send verification mail.', 'warn');
+    const message = feature === 'google'
+      ? 'Google login needs Firebase config first. Add the Firebase web config and enable Google sign-in.'
+      : 'Email signup/login needs Firebase config first. Add the Firebase web config to send verification mail.';
+    setStatus(message, 'warn');
     return false;
   }
 
@@ -120,7 +123,7 @@
   }
 
   async function signInGoogle() {
-    if (!requireFirebaseConfig()) return;
+    if (!requireFirebaseConfig('google')) return;
     const { GoogleAuthProvider, signInWithPopup } = state.modules.authMod;
     await signInWithPopup(state.auth, new GoogleAuthProvider());
   }
