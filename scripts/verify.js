@@ -70,14 +70,12 @@ assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should 
 assert(normalHtml.includes('id="normal-mode-menu"'), 'Normal chess should open with a minimal mode menu before the board');
 assert(normalHtml.includes('id="normal-player-vs-ai-btn"') && normalHtml.includes('Player vs AI'), 'Normal chess menu should have a Player vs AI button');
 assert(normalHtml.includes('id="normal-local-pvp-btn"') && normalHtml.includes('Local PvP'), 'Normal chess menu should have a Local PvP button');
-assert(normalHtml.includes('id="normal-quick-match-btn"') && normalHtml.includes('Quick Match'), 'Normal chess menu should have a Quick Match button');
-assert(normalHtml.includes('id="normal-room-btn"') && normalHtml.includes('Room'), 'Normal chess menu should have a Room button');
+assert(!normalHtml.includes('id="normal-quick-match-btn"') && !normalHtml.includes('Quick Match'), 'Normal chess should not show Quick Match');
+assert(!normalHtml.includes('id="normal-room-btn"') && !normalHtml.includes('Room Hosting') && !normalHtml.includes('normal-host-room-btn'), 'Normal chess should not show room hosting');
 assert(!normalHtml.includes('Choose how you want to play') && !normalHtml.includes('Start Single Player') && !normalHtml.includes('Start Multiple Player'), 'Normal chess mode menu should stay minimal with buttons only');
 assert(normalHtml.includes('id="normal-game-screen"') && normalHtml.includes('class="game-container hidden"'), 'Normal chess game screen should be hidden until mode selection');
 assert(normalHtml.includes('startNormalGame') && normalHtml.includes('chooseNormalAiMove') && normalHtml.includes('NORMAL_AI_DELAY'), 'Normal chess single player should start from menu and include AI opponent');
-assert(normalHtml.includes('id="normal-host-room-btn"') && normalHtml.includes('id="normal-join-room-code"'), 'Normal chess should expose room hosting controls');
-assert(normalHtml.includes('NORMAL_PEERJS_CDN') && normalHtml.includes('NORMAL_QUICK_MATCH_ROOM'), 'Normal chess should load PeerJS and define a quick match room');
-assert(normalHtml.includes('serializeNormalGame') && normalHtml.includes('applyNormalRemoteState') && normalHtml.includes('broadcastNormalState') && normalHtml.includes('sendNormalMoveRequest'), 'Normal chess should support authoritative room state sync');
+assert(!normalHtml.includes('NORMAL_PEERJS_CDN') && !normalHtml.includes('NORMAL_QUICK_MATCH_ROOM') && !normalHtml.includes('sendNormalMoveRequest'), 'Normal chess should not include room/matchmaking networking code');
 assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');
 assert(normalHtml.includes('background:#f0d9b5') && normalHtml.includes('background:#b58863'), 'Normal chess board should use cleaner classic tile colors');
 assert(normalHtml.includes('data-label'), 'Normal chess board should show coordinate labels on edge tiles');
