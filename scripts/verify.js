@@ -6,9 +6,13 @@ const root = path.resolve(__dirname, '..');
 const landingPath = path.join(root, 'index.html');
 const fourPlayerPath = path.join(root, 'four-player.html');
 const normalPath = path.join(root, 'normal-chess.html');
+const normalRoomPath = path.join(root, 'normal-room.html');
+const normalQuickPath = path.join(root, 'normal-quick-match.html');
 const landingHtml = fs.readFileSync(landingPath, 'utf8');
 const html = fs.readFileSync(fourPlayerPath, 'utf8');
 const normalHtml = fs.readFileSync(normalPath, 'utf8');
+const normalRoomHtml = fs.readFileSync(normalRoomPath, 'utf8');
+const normalQuickHtml = fs.readFileSync(normalQuickPath, 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -70,12 +74,15 @@ assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should 
 assert(normalHtml.includes('id="normal-mode-menu"'), 'Normal chess should open with a minimal mode menu before the board');
 assert(normalHtml.includes('id="normal-player-vs-ai-btn"') && normalHtml.includes('Player vs AI'), 'Normal chess menu should have a Player vs AI button');
 assert(normalHtml.includes('id="normal-local-pvp-btn"') && normalHtml.includes('Local PvP'), 'Normal chess menu should have a Local PvP button');
-assert(!normalHtml.includes('id="normal-quick-match-btn"') && !normalHtml.includes('Quick Match'), 'Normal chess should not show Quick Match');
-assert(!normalHtml.includes('id="normal-room-btn"') && !normalHtml.includes('Room Hosting') && !normalHtml.includes('normal-host-room-btn'), 'Normal chess should not show room hosting');
+assert(normalHtml.includes('id="normal-quick-match-btn"') && normalHtml.includes('./normal-quick-match.html'), 'Normal chess menu should link Quick Match to a separate finding-players page');
+assert(normalHtml.includes('id="normal-room-btn"') && normalHtml.includes('./normal-room.html'), 'Normal chess menu should link Room to a separate host/join page');
+assert(!normalHtml.includes('Room Hosting') && !normalHtml.includes('normal-host-room-btn'), 'Normal chess gameplay page should not show room hosting controls');
 assert(!normalHtml.includes('Choose how you want to play') && !normalHtml.includes('Start Single Player') && !normalHtml.includes('Start Multiple Player'), 'Normal chess mode menu should stay minimal with buttons only');
 assert(normalHtml.includes('id="normal-game-screen"') && normalHtml.includes('class="game-container hidden"'), 'Normal chess game screen should be hidden until mode selection');
 assert(normalHtml.includes('startNormalGame') && normalHtml.includes('chooseNormalAiMove') && normalHtml.includes('NORMAL_AI_DELAY'), 'Normal chess single player should start from menu and include AI opponent');
-assert(!normalHtml.includes('NORMAL_PEERJS_CDN') && !normalHtml.includes('NORMAL_QUICK_MATCH_ROOM') && !normalHtml.includes('sendNormalMoveRequest'), 'Normal chess should not include room/matchmaking networking code');
+assert(normalHtml.includes('NORMAL_PEERJS_CDN') && normalHtml.includes('NORMAL_QUICK_MATCH_ROOM') && normalHtml.includes('sendNormalMoveRequest'), 'Normal chess gameplay should keep hidden room/matchmaking networking code for separate pages');
+assert(normalRoomHtml.includes('id="normal-room-host-btn"') && normalRoomHtml.includes('id="normal-room-join-btn"') && normalRoomHtml.includes('normal-chess.html?online='), 'Normal room page should offer host/join before opening gameplay');
+assert(normalQuickHtml.includes('id="normal-quick-status"') && normalQuickHtml.includes('Finding players') && normalQuickHtml.includes('online=quick'), 'Normal quick match page should show finding players before opening gameplay');
 assert(normalHtml.includes('class NormalChessGame'), 'Normal chess page should have a separate normal chess game engine');
 assert(normalHtml.includes('background:#f0d9b5') && normalHtml.includes('background:#b58863'), 'Normal chess board should use cleaner classic tile colors');
 assert(normalHtml.includes('data-label'), 'Normal chess board should show coordinate labels on edge tiles');
