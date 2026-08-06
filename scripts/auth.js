@@ -39,7 +39,7 @@
   function requireFirebaseConfig() {
     if (state.modules) return true;
     showSetupForm();
-    setStatus('Enter your email below, but real signup/login needs Firebase config first.', 'warn');
+    setStatus('Email form is ready. Firebase config is needed before this can send verification mail.', 'warn');
     return false;
   }
 
@@ -187,7 +187,7 @@
     bind();
     if (!window.THE_CHESS_FIREBASE_CONFIGURED) {
       showSetupForm();
-      setStatus('Enter your email below. Firebase config is still needed before signup/login can send verification mail.', 'warn');
+      setStatus('Create an account with email or continue with Google.', 'info');
       return;
     }
     await loadFirebase();

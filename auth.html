@@ -6,12 +6,12 @@
   <title>Login - The Chess</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { min-height: 100vh; font-family: "Segoe UI", Arial, sans-serif; color: #f5f7ff; background: radial-gradient(circle at top, #213a68 0%, #111a31 48%, #071020 100%); display: grid; place-items: center; padding: 24px; }
+    body { min-height: 100vh; font-family: "Segoe UI", Arial, sans-serif; color: #f5f7ff; background: radial-gradient(circle at top, #213a68 0%, #111a31 48%, #071020 100%); display: grid; justify-items: center; align-items: start; padding: clamp(14px, 4vw, 24px); padding-top: clamp(18px, 7vh, 64px); }
     .auth-shell { width: min(560px, 100%); display: grid; gap: 14px; }
-    .panel { padding: 28px; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.05)); box-shadow: 0 24px 75px rgba(0,0,0,.42); display: grid; gap: 14px; }
+    .panel { padding: clamp(18px, 5vw, 28px); border: 1px solid rgba(255,255,255,.16); border-radius: 24px; background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.05)); box-shadow: 0 24px 75px rgba(0,0,0,.42); display: grid; gap: 14px; }
     .hidden { display: none !important; }
     .top-nav a { color: #ffe45c; text-decoration: none; font-weight: 900; }
-    h1 { font-size: clamp(2rem, 5vw, 3.3rem); background: linear-gradient(90deg, #ffe45c, #36d97d, #5f8cff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    h1 { font-size: clamp(1.8rem, 7vw, 3.3rem); background: linear-gradient(90deg, #ffe45c, #36d97d, #5f8cff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     h2 { color: #ffe45c; }
     p { color: #dce6ff; line-height: 1.5; }
     input { width: 100%; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; padding: 14px 16px; background: #101a33; color: #fff; font-weight: 800; }
@@ -36,11 +36,6 @@
       <h1>The Chess Login</h1>
       <div id="auth-status" class="status">Loading login...</div>
 
-      <div id="setup-panel" class="row hidden">
-        <h2>Firebase setup needed</h2>
-        <p>The email and Google login form is shown below. Real signup, email verification, and Google login will start working after Firebase config is pasted into <code>scripts/firebase-config.js</code>.</p>
-      </div>
-
       <div id="auth-panel" class="row hidden">
         <input id="auth-email" type="email" placeholder="Email" autocomplete="email" />
         <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
@@ -49,6 +44,11 @@
           <button id="email-signin-btn" class="btn" type="button">Sign In</button>
         </div>
         <button id="google-signin-btn" class="btn google" type="button">Continue with Google</button>
+      </div>
+
+      <div id="setup-panel" class="row hidden">
+        <h2>Firebase setup needed</h2>
+        <p>Real signup, email verification, and Google login will start working after Firebase config is pasted into <code>scripts/firebase-config.js</code>.</p>
       </div>
 
       <div id="verify-panel" class="row hidden">

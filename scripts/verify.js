@@ -39,7 +39,7 @@ assert(authHtml.includes('id="google-signin-btn"') && authHtml.includes('Continu
 assert(authHtml.includes('./scripts/firebase-config.js') && authHtml.includes('./scripts/auth.js'), 'Auth page should load Firebase config and auth logic');
 assert(firebaseConfigJs.includes('THE_CHESS_FIREBASE_CONFIG') && firebaseConfigJs.includes('THE_CHESS_FIREBASE_CONFIGURED'), 'Firebase config placeholder should expose configured flag');
 assert(authJs.includes('sendEmailVerification') && authJs.includes('GoogleAuthProvider') && authJs.includes('usernames'), 'Auth logic should support email verification, Google sign-in, and unique usernames');
-assert(authJs.includes('showSetupForm') && authJs.includes('Enter your email below') && authHtml.includes('id="auth-email"'), 'Auth page should still ask for email even before Firebase config is pasted');
+assert(authJs.includes('showSetupForm') && authJs.includes('Create an account with email') && authHtml.includes('id="auth-email"'), 'Auth page should visibly ask for email even before Firebase config is pasted');
 assert(authGuardJs.includes('onAuthStateChanged') && authGuardJs.includes('emailVerified') && authGuardJs.includes('Login setup needed'), 'Auth guard should enforce login once Firebase is configured and stay safe before config');
 assert(html.includes('href="./index.html"') && html.includes('href="./normal-chess.html"'), '4-player chess page should link back to chooser and normal chess page');
 assert(html.includes('id="four-player-mode-menu"'), '4-player chess should open with a minimal mode menu before the board');
