@@ -8,11 +8,19 @@ const fourPlayerPath = path.join(root, 'four-player.html');
 const normalPath = path.join(root, 'normal-chess.html');
 const normalRoomPath = path.join(root, 'normal-room.html');
 const normalQuickPath = path.join(root, 'normal-quick-match.html');
+const authPath = path.join(root, 'auth.html');
+const firebaseConfigPath = path.join(root, 'scripts', 'firebase-config.js');
+const authScriptPath = path.join(root, 'scripts', 'auth.js');
+const authGuardPath = path.join(root, 'scripts', 'auth-guard.js');
 const landingHtml = fs.readFileSync(landingPath, 'utf8');
 const html = fs.readFileSync(fourPlayerPath, 'utf8');
 const normalHtml = fs.readFileSync(normalPath, 'utf8');
 const normalRoomHtml = fs.readFileSync(normalRoomPath, 'utf8');
 const normalQuickHtml = fs.readFileSync(normalQuickPath, 'utf8');
+const authHtml = fs.readFileSync(authPath, 'utf8');
+const firebaseConfigJs = fs.readFileSync(firebaseConfigPath, 'utf8');
+const authJs = fs.readFileSync(authScriptPath, 'utf8');
+const authGuardJs = fs.readFileSync(authGuardPath, 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -21,6 +29,17 @@ function assert(condition, message) {
 assert(landingHtml.includes('id="four-player-link"') && landingHtml.includes('./four-player.html'), 'Landing page should link to 4 Player Chess page');
 assert(landingHtml.includes('id="normal-chess-link"') && landingHtml.includes('./normal-chess.html'), 'Landing page should link to Normal Chess page');
 assert(landingHtml.includes('Choose which chess webpage'), 'Site root should open a game choice page');
+assert(landingHtml.includes('./scripts/firebase-config.js') && landingHtml.includes('./scripts/auth-guard.js'), 'Landing page should load the auth guard');
+assert(html.includes('./scripts/firebase-config.js') && html.includes('./scripts/auth-guard.js'), '4-player page should load the auth guard');
+assert(normalHtml.includes('./scripts/firebase-config.js') && normalHtml.includes('./scripts/auth-guard.js'), 'Normal chess page should load the auth guard');
+assert(normalRoomHtml.includes('./scripts/firebase-config.js') && normalRoomHtml.includes('./scripts/auth-guard.js'), 'Normal room page should load the auth guard');
+assert(normalQuickHtml.includes('./scripts/firebase-config.js') && normalQuickHtml.includes('./scripts/auth-guard.js'), 'Normal quick match page should load the auth guard');
+assert(authHtml.includes('id="auth-panel"') && authHtml.includes('id="verify-panel"') && authHtml.includes('id="username-panel"'), 'Auth page should have sign-in, email verification, and username setup panels');
+assert(authHtml.includes('id="google-signin-btn"') && authHtml.includes('Continue with Google'), 'Auth page should offer Google sign-in');
+assert(authHtml.includes('./scripts/firebase-config.js') && authHtml.includes('./scripts/auth.js'), 'Auth page should load Firebase config and auth logic');
+assert(firebaseConfigJs.includes('THE_CHESS_FIREBASE_CONFIG') && firebaseConfigJs.includes('THE_CHESS_FIREBASE_CONFIGURED'), 'Firebase config placeholder should expose configured flag');
+assert(authJs.includes('sendEmailVerification') && authJs.includes('GoogleAuthProvider') && authJs.includes('usernames'), 'Auth logic should support email verification, Google sign-in, and unique usernames');
+assert(authGuardJs.includes('onAuthStateChanged') && authGuardJs.includes('emailVerified') && authGuardJs.includes('Login setup needed'), 'Auth guard should enforce login once Firebase is configured and stay safe before config');
 assert(html.includes('href="./index.html"') && html.includes('href="./normal-chess.html"'), '4-player chess page should link back to chooser and normal chess page');
 assert(html.includes('id="four-player-mode-menu"'), '4-player chess should open with a minimal mode menu before the board');
 assert(html.includes('id="four-player-vs-ai-btn"') && html.includes('Player vs AI'), '4-player chess menu should have a Player vs AI button');
@@ -63,12 +82,12 @@ assert(html.includes('PEERJS_CDN'), 'Room hosting should load PeerJS for WebRTC 
 assert(html.includes('function serializeGame()'), 'Room hosting should serialize the authoritative game state');
 assert(html.includes('function broadcastState()'), 'Room hosting should broadcast host state to guests');
 assert(html.includes('sendMoveRequest'), 'Guests should send move requests to the host');
-assert((html.match(/<script\b/g) || []).length === 1, 'Expected exactly one inline script to avoid redeclaration bugs');
+assert((html.match(/<script(?![^>]*\bsrc=)\b/g) || []).length === 1, 'Expected exactly one inline game script to avoid redeclaration bugs');
 assert((html.match(/const TURN_ORDER/g) || []).length === 0, 'TURN_ORDER const should not be duplicated/redeclared');
 
-const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
-assert(scripts.length === 1, 'Expected one executable script block');
-const normalScripts = [...normalHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
+assert(scripts.length === 1, 'Expected one executable inline game script block');
+const normalScripts = [...normalHtml.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 assert(normalHtml.includes('id="normal-board"'), 'Normal chess page should have its own board');
 assert(normalHtml.includes('[Normal Chess] boot ok'), 'Normal chess page should have boot marker');
 assert(normalHtml.includes('id="normal-mode-menu"'), 'Normal chess should open with a minimal mode menu before the board');
@@ -90,7 +109,7 @@ assert(normalHtml.includes('background:#f0d9b5') && normalHtml.includes('backgro
 assert(normalHtml.includes('data-label'), 'Normal chess board should show coordinate labels on edge tiles');
 assert(normalHtml.includes('paint-order:stroke fill'), 'Normal chess pieces should have readable outlined silhouettes');
 assert(normalHtml.includes('href="./index.html"') && normalHtml.includes('href="./four-player.html"'), 'Normal chess page should link back to chooser and 4-player page');
-assert(normalScripts.length === 1, 'Expected one normal chess script block');
+assert(normalScripts.length === 1, 'Expected one normal chess inline game script block');
 
 new vm.Script(scripts[0], { filename: 'four-player-inline-script.js' });
 new vm.Script(normalScripts[0], { filename: 'normal-chess-inline-script.js' });

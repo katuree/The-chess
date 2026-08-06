@@ -76,5 +76,7 @@
     document.getElementById('normal-room-copy-btn').addEventListener('click',()=>navigator.clipboard?.writeText(roomCode).then(()=>setStatus(`Copied room code ${roomCode}.`)).catch(()=>setStatus(`Room code: ${roomCode}`)));
   })();
   </script>
+  <script src="./scripts/firebase-config.js"></script>
+  <script src="./scripts/auth-guard.js"></script>
 </body>
 </html>
