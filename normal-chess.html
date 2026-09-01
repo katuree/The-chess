@@ -173,7 +173,9 @@
     const NORMAL_QUICK_MATCH_ROOM='thechess-normal-quick-match';
     let normalNetworkRole='offline', normalRoomPeer=null, normalRoomConn=null, normalHostConnections=[], normalRoomId='';
     let normalPlayerColor='white', normalRoomHostColor='white', normalRoomGuestColor='black';
-    const game=new NormalChessGame(); window.NormalChess={game,NormalChessGame,render,startNormalGame,chooseNormalAiMove,serializeNormalGame,applyNormalRemoteState,hostNormalRoom,joinNormalRoom,quickNormalMatch,broadcastNormalState,sendNormalMoveRequest};
+    let game;
+    try { game=new NormalChessGame(); } catch(e) { console.error('[Normal Chess] game creation failed:', e.message, e.stack); }
+    window.NormalChess={game,NormalChessGame,render,startNormalGame,chooseNormalAiMove,serializeNormalGame,applyNormalRemoteState,hostNormalRoom,joinNormalRoom,quickNormalMatch,broadcastNormalState,sendNormalMoveRequest};
     function coord(r,c){ return `${'abcdefgh'[c]}${8-r}`; }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
     function unlockAudio(){ if(!soundEnabled) return null; const C=window.AudioContext||window.webkitAudioContext; if(!C) return null; if(!audioCtx) audioCtx=new C(); if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
