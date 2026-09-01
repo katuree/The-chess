@@ -43,16 +43,39 @@
     const startBtn=document.getElementById('normal-room-start-btn');
     const peers=[];
     let roomCode='', peer=null, conn=null;
+    let isHost=false;
     function setStatus(text){ status.textContent=text; }
     function code(){ return `normalchess-${Math.random().toString(36).slice(2,8)}`; }
-    function gameUrl(role,room){ return `./normal-chess.html?online=${role}&room=${encodeURIComponent(room)}`; }
+    function gameUrl(role,room,color){ return `./normal-chess.html?online=${role}&room=${encodeURIComponent(room)}&color=${color}`; }
     function loadPeerJs(){ if(window.Peer) return Promise.resolve(); return new Promise((resolve,reject)=>{ const script=document.createElement('script'); script.src=PEERJS_CDN; script.onload=resolve; script.onerror=()=>reject(new Error('PeerJS failed to load')); document.head.appendChild(script); }); }
     async function hostRoom(){
       await loadPeerJs();
-      roomCode=code(); output.value=roomCode; hostPanel.classList.remove('hidden'); startBtn.disabled=false;
+      roomCode=code(); output.value=roomCode; hostPanel.classList.remove('hidden'); isHost=true;
       peer=new Peer(roomCode);
-      peer.on('open',()=>setStatus(`Room ${roomCode} is ready. Share the code, wait for your friend, then click Start Game.`));
-      peer.on('connection',c=>{ peers.push(c); c.on('open',()=>setStatus(`${peers.filter(p=>p.open).length} player joined. Click Start Game when ready.`)); c.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); c.on('close',()=>setStatus('A player left the lobby.')); });
+      peer.on('open',()=>setStatus(`Room ${roomCode} is ready. Share the code, wait for your friend, then click Start Game. (You are White)`));
+      peer.on('connection',c=>{
+        const guestIdx=peers.filter(p=>p.open).length;
+        peers.push(c);
+        // Assign Black to first guest (0-indexed), White stays with host
+        const guestColor='black';
+        c.on('open',()=>{
+          // Tell guest their color
+          c.send({type:'color', color:guestColor});
+          setStatus(`${peers.filter(p=>p.open).length} player joined. Click Start Game when ready. (You: White, Guest: Black)`);
+        });
+        c.on('data',msg=>{
+          if(msg?.type==='start-request'&&isHost){
+            c.send({type:'start'});
+            setStatus('Game starting...');
+            setTimeout(()=>{ location.href=gameUrl('host',roomCode,'white'); },250);
+          }
+        });
+        c.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`));
+        c.on('close',()=>{
+          peers.splice(peers.indexOf(c),1);
+          setStatus('A player left the lobby.');
+        });
+      });
       peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
     }
     async function joinRoom(){
@@ -61,14 +84,33 @@
       if(!roomCode){ setStatus('Enter a room code first.'); return; }
       setStatus('Joining room... waiting for host to start.');
       peer=new Peer();
-      peer.on('open',()=>{ conn=peer.connect(roomCode,{reliable:true}); conn.on('open',()=>setStatus('Joined room. Waiting for host to start the game...')); conn.on('data',msg=>{ if(msg?.type==='start') location.href=gameUrl('guest',roomCode); }); conn.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); conn.on('close',()=>setStatus('Host disconnected before starting.')); });
+      peer.on('open',()=>{
+        conn=peer.connect(roomCode,{reliable:true});
+        conn.on('open',()=>{
+          setStatus('Joined room. Waiting for host to start the game...');
+        });
+        conn.on('data',msg=>{
+          if(msg?.type==='color'){
+            // Guest gets Black
+            const myColor=msg.color;
+            setStatus(`You are Black. Waiting for host to start the game...`);
+          }
+          if(msg?.type==='start'){
+            setStatus('Game starting...');
+            location.href=gameUrl('guest',roomCode,'black');
+          }
+        });
+        conn.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`));
+        conn.on('close',()=>{ if(isHost){ setStatus('Host disconnected before starting.'); } });
+      });
       peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
     }
     function startGame(){
       if(!roomCode) return;
+      // Send start to all connected guests
       for(const p of peers.filter(p=>p.open)) p.send({type:'start'});
       setStatus('Starting game...');
-      setTimeout(()=>{ location.href=gameUrl('host',roomCode); },250);
+      setTimeout(()=>{ location.href=gameUrl('host',roomCode,'white'); },250);
     }
     document.getElementById('normal-room-host-btn').addEventListener('click',hostRoom);
     document.getElementById('normal-room-join-btn').addEventListener('click',joinRoom);
