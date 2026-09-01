@@ -172,6 +172,7 @@
     const NORMAL_PEERJS_CDN='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
     const NORMAL_QUICK_MATCH_ROOM='thechess-normal-quick-match';
     let normalNetworkRole='offline', normalRoomPeer=null, normalRoomConn=null, normalHostConnections=[], normalRoomId='';
+    let normalPlayerColor='white', normalRoomHostColor='white', normalRoomGuestColor='black';
     const game=new NormalChessGame(); window.NormalChess={game,NormalChessGame,render,startNormalGame,chooseNormalAiMove,serializeNormalGame,applyNormalRemoteState,hostNormalRoom,joinNormalRoom,quickNormalMatch,broadcastNormalState,sendNormalMoveRequest};
     function coord(r,c){ return `${'abcdefgh'[c]}${8-r}`; }
     function cap(s){ return s[0].toUpperCase()+s.slice(1); }
@@ -180,7 +181,13 @@
     function playSound(kind='move'){ if(!soundEnabled) return; if(kind==='capture'){tone(250,.1,'square'); setTimeout(()=>tone(170,.12,'triangle'),70);} else if(kind==='check'){tone(640,.1,'sawtooth'); setTimeout(()=>tone(780,.11,'sawtooth'),90);} else tone(380,.075,'sine'); }
     function render(){ const board=document.getElementById('normal-board'); board.innerHTML=''; for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const sq=document.createElement('div'); sq.className=`square ${(r+c)%2?'dark':'light'}`; sq.dataset.label=(c===0?8-r:'')+(r===7?'abcdefgh'[c]:''); const p=game.piece(r,c); if(p){ const span=document.createElement('span'); span.className=`chess-piece piece-${p.player} piece-${p.type}`; span.innerHTML=iconFor(p.type); span.title=`${p.player} ${p.type}`; sq.appendChild(span); } if(game.selected&&game.selected[0]===r&&game.selected[1]===c) sq.classList.add('selected'); if(game.targets.some(([tr,tc])=>tr===r&&tc===c)) sq.classList.add(game.piece(r,c)?'capture':'target'); if(game.lastMove&&(game.lastMove.from[0]===r&&game.lastMove.from[1]===c||game.lastMove.to[0]===r&&game.lastMove.to[1]===c)) sq.classList.add('last'); if(p&&p.type==='king'&&game.checkPlayer===p.player) sq.classList.add('check'); sq.addEventListener('click',()=>clickSquare(r,c)); board.appendChild(sq); }
       const name=document.getElementById('current-player-name'); name.textContent=cap(game.current); name.className=game.current; document.getElementById('turn-counter').textContent=`Move: ${Math.floor(game.turn/2)+1}`; document.getElementById('captured-pieces').innerHTML=game.captured.map(p=>`<span class="chess-piece piece-${p.player}" style="display:inline-grid;width:28px;height:28px" title="${p.player} ${p.type}">${iconFor(p.type)}</span>`).join(''); document.getElementById('move-log').innerHTML=game.log.map((m,i)=>`<div>${i+1}. ${cap(m.player)} ${m.text}</div>`).join(''); document.getElementById('game-status').textContent=game.gameOver?`Checkmate! ${cap(game.current==='white'?'black':'white')} wins.`:game.checkPlayer?`Check! ${cap(game.checkPlayer)} king is under attack.${normalMode==='single'?' You are White; AI is Black.':''}${normalNetworkRole!=='offline'?` Online room: ${normalNetworkRole}${normalRoomId?' '+normalRoomId:''}.`:''}`:`Game in progress...${normalMode==='single'?' You are White; AI is Black.':''}${normalNetworkRole!=='offline'?` Online room: ${normalNetworkRole}${normalRoomId?' '+normalRoomId:''}.`:''}`; document.getElementById('undo-btn').disabled=!(game.undoStack&&game.undoStack.length)||aiThinking; document.getElementById('sound-btn').textContent=soundEnabled?'Sound: On':'Sound: Off'; scheduleNormalAiTurn(); }
-    function clickSquare(r,c){ unlockAudio(); if(game.gameOver||aiThinking||isNormalAiTurn()) return; const p=game.piece(r,c); if(game.selected){ const [sr,sc]=game.selected; if(game.targets.some(([tr,tc])=>tr===r&&tc===c)){ if(normalNetworkRole==='guest'){ sendNormalMoveRequest(sr,sc,r,c); game.selected=null; game.targets=[]; render(); return; } const moved=game.move(sr,sc,r,c); if(moved) broadcastNormalState(); game.selected=null; game.targets=[]; render(); return; } game.selected=null; game.targets=[]; } if(p&&p.player===game.current){ game.selected=[r,c]; game.targets=game.moves(r,c); } render(); }
+    function clickSquare(r,c){ unlockAudio(); if(game.gameOver||aiThinking) return;
+      // Online mode: only allow your color to move
+      if(normalNetworkRole!=='offline' && game.current!==normalPlayerColor){
+        updateNormalOnlineStatus('Not your turn to move. You are '+normalPlayerColor+'.');
+        return;
+      }
+      const p=game.piece(r,c); if(game.selected){ const [sr,sc]=game.selected; if(game.targets.some(([tr,tc])=>tr===r&&tc===c)){ if(normalNetworkRole==='guest'){ sendNormalMoveRequest(sr,sc,r,c); game.selected=null; game.targets=[]; render(); return; } const moved=game.move(sr,sc,r,c); if(moved) broadcastNormalState(); game.selected=null; game.targets=[]; render(); return; } game.selected=null; game.targets=[]; } if(p&&p.player===game.current){ game.selected=[r,c]; game.targets=game.moves(r,c); } render(); }
     function isNormalAiTurn(){ return normalMode==='single' && game.current==='black' && !game.gameOver; }
     function chooseNormalAiMove(){
       const moves=game.legalMovesFor('black');
@@ -212,16 +219,37 @@
     function applyNormalRemoteState(state){ if(!state) return; game.board=state.board; game.turn=state.turn; game.log=state.log||[]; game.captured=state.captured||[]; game.lastMove=state.lastMove||null; game.gameOver=!!state.gameOver; game.checkPlayer=state.checkPlayer||null; game.selected=null; game.targets=[]; aiThinking=false; render(); }
     function updateNormalOnlineStatus(text){ const status=document.getElementById('game-status'); if(status) status.textContent=text; }
     function loadNormalPeerJs(){ if(window.Peer) return Promise.resolve(); return new Promise((resolve,reject)=>{ const existing=document.querySelector('script[data-peerjs]'); if(existing){ existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; } const script=document.createElement('script'); script.src=NORMAL_PEERJS_CDN; script.dataset.peerjs='true'; script.onload=resolve; script.onerror=()=>reject(new Error('PeerJS failed to load')); document.head.appendChild(script); }); }
-    function connectNormalHostConn(conn){ normalHostConnections.push(conn); conn.on('open',()=>{ conn.send({type:'state', state:serializeNormalGame()}); render(); }); conn.on('data',msg=>{ if(msg?.type==='move'){ const ok=game.move(msg.fr,msg.fc,msg.tr,msg.tc); if(ok){ render(); broadcastNormalState(); } else if(conn.open) conn.send({type:'move-rejected', reason:'Not a legal move for the current turn.'}); } }); conn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); }); conn.on('close',()=>{ normalHostConnections=normalHostConnections.filter(c=>c!==conn); render(); }); }
+    function connectNormalHostConn(conn){
+      normalHostConnections.push(conn);
+      conn.on('open',()=>{ conn.send({type:'state', state:serializeNormalGame()}); render(); });
+      conn.on('data',msg=>{
+        if(msg?.type==='move'){
+          // Guest tried to move — validate on host
+          const p=game.piece(msg.fr,msg.fc);
+          if(p&&p.player===game.current && game.moves(msg.fr,msg.fc).some(([r,c])=>r===msg.tr&&c===msg.tc)){
+            game.move(msg.fr,msg.fc,msg.tr,msg.tc);
+            broadcastNormalState();
+            render();
+          } else if(conn.open){
+            conn.send({type:'move-rejected', reason:'Not a legal move for the current turn.'});
+          }
+        }
+      });
+      conn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); });
+      conn.on('close',()=>{ normalHostConnections=normalHostConnections.filter(c=>c!==conn); render(); });
+    }
     function broadcastNormalState(){ if(normalNetworkRole!=='host') return; const packet={type:'state', state:serializeNormalGame()}; for(const conn of normalHostConnections.filter(c=>c.open)) conn.send(packet); }
     function sendNormalMoveRequest(fr,fc,tr,tc){ if(normalNetworkRole==='guest' && normalRoomConn?.open) normalRoomConn.send({type:'move',fr,fc,tr,tc}); }
     async function hostNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=code || new URLSearchParams(location.search).get('room') || `normalchess-${Math.random().toString(36).slice(2,8)}`; normalNetworkRole='host'; normalRoomPeer=new Peer(normalRoomId); normalRoomPeer.on('open',()=>{ render(); }); normalRoomPeer.on('connection',connectNormalHostConn); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
-    async function joinNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=(code || new URLSearchParams(location.search).get('room') || '').trim(); if(!normalRoomId){ updateNormalOnlineStatus('Missing room code.'); return; } normalNetworkRole='guest'; normalRoomPeer=new Peer(); normalRoomPeer.on('open',()=>{ normalRoomConn=normalRoomPeer.connect(normalRoomId,{reliable:true}); normalRoomConn.on('open',render); normalRoomConn.on('data',msg=>{ if(msg?.type==='state') applyNormalRemoteState(msg.state); else if(msg?.type==='move-rejected') updateNormalOnlineStatus(`Move rejected: ${msg.reason||'not your turn.'}`); }); normalRoomConn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); }); normalRoomConn.on('close',()=>{ normalNetworkRole='offline'; render(); }); }); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
+    async function joinNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=(code || new URLSearchParams(location.search).get('room') || '').trim(); if(!normalRoomId){ updateNormalOnlineStatus('Missing room code.'); return; } normalNetworkRole='guest'; normalRoomPeer=new Peer(); const myColor=normalPlayerColor||'black'; normalRoomPeer.on('open',()=>{ normalRoomConn=normalRoomPeer.connect(normalRoomId,{reliable:true}); normalRoomConn.on('open',()=>{ normalRoomConn.send({type:'color-request', color:myColor}); render(); updateNormalOnlineStatus('Joined room. Waiting for host to start...'); }); normalRoomConn.on('data',msg=>{ if(msg?.type==='state') applyNormalRemoteState(msg.state); else if(msg?.type==='move-rejected') updateNormalOnlineStatus(`Move rejected: ${msg.reason||'not your turn.'}`); else if(msg?.type==='colors'){ normalRoomHostColor=msg.host; normalRoomGuestColor=msg.guest; normalPlayerColor=myColor; updateNormalOnlineStatus(`You are ${msg.guest}. Host is ${msg.host}. Waiting for game to start...`); } }); normalRoomConn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); }); normalRoomConn.on('close',()=>{ normalNetworkRole='offline'; render(); }); }); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
     async function quickNormalMatch(){ await loadNormalPeerJs(); normalRoomId=NORMAL_QUICK_MATCH_ROOM; normalNetworkRole='host'; normalRoomPeer=new Peer(NORMAL_QUICK_MATCH_ROOM); normalRoomPeer.on('open',()=>{ render(); }); normalRoomPeer.on('connection',connectNormalHostConn); normalRoomPeer.on('error',err=>{ if(err.type==='unavailable-id') joinNormalRoom(NORMAL_QUICK_MATCH_ROOM); else updateNormalOnlineStatus(`Quick match error: ${err.type||err.message}`); }); render(); }
     function startNormalGame(mode){
       normalMode=mode;
       aiThinking=false;
       game.newGame();
+      // Determine player's color from URL param
+      const params=new URLSearchParams(location.search);
+      normalPlayerColor=params.get('color') || 'white';
       document.getElementById('normal-mode-menu').classList.add('hidden');
       document.getElementById('normal-game-screen').classList.remove('hidden');
       render();
