@@ -52,7 +52,7 @@
       roomCode=code(); output.value=roomCode; hostPanel.classList.remove('hidden'); startBtn.disabled=false;
       peer=new Peer(roomCode);
       peer.on('open',()=>setStatus(`Room ${roomCode} is ready. Share the code, wait for your friend, then click Start Game.`));
-      peer.on('connection',c=>{ peers.push(c); c.on('open',()=>setStatus(`${peers.filter(p=>p.open).length} player joined. Click Start Game when ready.`)); c.on('close',()=>setStatus('A player left the lobby.')); });
+      peer.on('connection',c=>{ peers.push(c); c.on('open',()=>setStatus(`${peers.filter(p=>p.open).length} player joined. Click Start Game when ready.`)); c.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); c.on('close',()=>setStatus('A player left the lobby.')); });
       peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
     }
     async function joinRoom(){
@@ -61,7 +61,7 @@
       if(!roomCode){ setStatus('Enter a room code first.'); return; }
       setStatus('Joining room... waiting for host to start.');
       peer=new Peer();
-      peer.on('open',()=>{ conn=peer.connect(roomCode,{reliable:true}); conn.on('open',()=>setStatus('Joined room. Waiting for host to start the game...')); conn.on('data',msg=>{ if(msg?.type==='start') location.href=gameUrl('guest',roomCode); }); conn.on('close',()=>setStatus('Host disconnected before starting.')); });
+      peer.on('open',()=>{ conn=peer.connect(roomCode,{reliable:true}); conn.on('open',()=>setStatus('Joined room. Waiting for host to start the game...')); conn.on('data',msg=>{ if(msg?.type==='start') location.href=gameUrl('guest',roomCode); }); conn.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); conn.on('close',()=>setStatus('Host disconnected before starting.')); });
       peer.on('error',err=>setStatus(`Room error: ${err.type||err.message}`));
     }
     function startGame(){
@@ -76,7 +76,5 @@
     document.getElementById('normal-room-copy-btn').addEventListener('click',()=>navigator.clipboard?.writeText(roomCode).then(()=>setStatus(`Copied room code ${roomCode}.`)).catch(()=>setStatus(`Room code: ${roomCode}`)));
   })();
   </script>
-  <script src="./scripts/firebase-config.js"></script>
-  <script src="./scripts/auth-guard.js"></script>
 </body>
 </html>

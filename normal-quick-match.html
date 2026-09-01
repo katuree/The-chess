@@ -37,7 +37,7 @@
       await loadPeerJs();
       peer=new Peer(QUICK_ROOM);
       peer.on('open',()=>setStatus('Waiting for another player...'));
-      peer.on('connection',c=>{ conn=c; conn.on('open',()=>{ conn.send({type:'start'}); begin('host'); }); conn.on('close',()=>{ if(!started) setStatus('Player disconnected. Waiting for another player...'); }); });
+      peer.on('connection',c=>{ conn=c; conn.on('open',()=>{ conn.send({type:'start'}); begin('host'); }); conn.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); conn.on('close',()=>{ if(!started) setStatus('Player disconnected. Waiting for another player...'); }); });
       peer.on('error',err=>{
         if(err.type==='unavailable-id') joinExistingQuickMatch();
         else { startBtn.disabled=false; setStatus(`Quick match error: ${err.type||err.message}`); }
@@ -46,14 +46,12 @@
     async function joinExistingQuickMatch(){
       setStatus('Match found. Connecting...');
       peer=new Peer();
-      peer.on('open',()=>{ conn=peer.connect(QUICK_ROOM,{reliable:true}); conn.on('open',()=>setStatus('Connected. Waiting for host to start...')); conn.on('data',msg=>{ if(msg?.type==='start') begin('guest'); }); conn.on('close',()=>{ if(!started){ setStatus('Host disconnected. Try again.'); startBtn.disabled=false; } }); });
+      peer.on('open',()=>{ conn=peer.connect(QUICK_ROOM,{reliable:true}); conn.on('open',()=>setStatus('Connected. Waiting for host to start...')); conn.on('data',msg=>{ if(msg?.type==='start') begin('guest'); }); conn.on('error',err=>setStatus(`Connection error: ${err?.type||err?.message||err}`)); conn.on('close',()=>{ if(!started){ setStatus('Host disconnected. Try again.'); startBtn.disabled=false; } }); });
       peer.on('error',err=>{ startBtn.disabled=false; setStatus(`Quick match error: ${err.type||err.message}`); });
     }
     startBtn.addEventListener('click',findPlayers);
     findPlayers();
   })();
   </script>
-  <script src="./scripts/firebase-config.js"></script>
-  <script src="./scripts/auth-guard.js"></script>
 </body>
 </html>

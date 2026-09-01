@@ -666,8 +666,10 @@
         if(msg?.type==='move'){
           const ok=game.move(msg.fr,msg.fc,msg.tr,msg.tc,msg.promo||null);
           if(ok){ render(); broadcastState(); }
+          else if(conn.open) conn.send({type:'move-rejected', reason:'Not a legal move for the current turn.'});
         }
       });
+      conn.on('error',err=>{ document.getElementById('room-status').textContent=`Connection error: ${err?.type||err?.message||err}`; });
       conn.on('close',()=>{ hostConnections=hostConnections.filter(c=>c!==conn); updateRoomUi(); });
     }
     function broadcastState(){
@@ -715,7 +717,11 @@
       roomPeer.on('open',()=>{
         roomConn=roomPeer.connect(roomId,{reliable:true});
         roomConn.on('open',updateRoomUi);
-        roomConn.on('data',msg=>{ if(msg?.type==='state') applyRemoteState(msg.state); });
+        roomConn.on('data',msg=>{
+          if(msg?.type==='state') applyRemoteState(msg.state);
+          else if(msg?.type==='move-rejected') document.getElementById('room-status').textContent=`Move rejected: ${msg.reason||'not your turn.'}`;
+        });
+        roomConn.on('error',err=>{ document.getElementById('room-status').textContent=`Connection error: ${err?.type||err?.message||err}`; });
         roomConn.on('close',()=>{ networkRole='offline'; updateRoomUi(); });
       });
       roomPeer.on('error',err=>{ document.getElementById('room-status').textContent=`Room error: ${err.type||err.message}`; });
@@ -793,7 +799,5 @@
     console.log('[Four-Handed Chess II] boot ok', {squares: document.querySelectorAll('.square').length, pieces: Array.from(document.querySelectorAll('.square')).filter(s=>s.textContent.trim()).length});
   })();
   </script>
-  <script src="./scripts/firebase-config.js"></script>
-  <script src="./scripts/auth-guard.js"></script>
 </body>
 </html>
