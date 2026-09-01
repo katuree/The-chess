@@ -240,6 +240,7 @@
       conn.on('data',msg=>{
         if(msg?.type==='move'){
           // Guest tried to move — validate on host
+          console.log('[HOST] Received move:', msg);
           const p=game.piece(msg.fr,msg.fc);
           if(p&&p.player===game.current && game.moves(msg.fr,msg.fc).some(([r,c])=>r===msg.tr&&c===msg.tc)){
             game.move(msg.fr,msg.fc,msg.tr,msg.tc);
@@ -247,6 +248,7 @@
             render();
           } else if(conn.open){
             conn.send({type:'move-rejected', reason:'Not a legal move for the current turn.'});
+            console.log('[HOST] Move rejected:', msg, game.current, p);
           }
         }
       });
@@ -260,14 +262,23 @@
     function broadcastNormalState(){
       if(normalNetworkRole!=='host') return;
       const packet={type:'state', state:serializeNormalGame()};
+      console.log('[HOST] Broadcasting state, turn:', game.turn, 'current:', game.current);
       // Send to host connections (from joinNormalRoom via room code)
       for(const conn of normalHostConnections.filter(c=>c.open)) conn.send(packet);
       // Also send to guest connection (from joinNormalRoom)
-      if(normalGuestConnForBroadcast && normalGuestConnForBroadcast.open) normalGuestConnForBroadcast.send(packet);
+      if(normalGuestConnForBroadcast && normalGuestConnForBroadcast.open) {
+        normalGuestConnForBroadcast.send(packet);
+        console.log('[HOST] Sent state to guest');
+      }
     }
     function sendNormalMoveRequest(fr,fc,tr,tc){ if(normalNetworkRole==='guest' && normalRoomConn?.open) normalRoomConn.send({type:'move',fr,fc,tr,tc}); }
     async function hostNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=code || new URLSearchParams(location.search).get('room') || `normalchess-${Math.random().toString(36).slice(2,8)}`; normalNetworkRole='host'; normalRoomPeer=new Peer(normalRoomId); normalRoomPeer.on('open',()=>{ render(); }); normalRoomPeer.on('connection',connectNormalHostConn); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
-    async function joinNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=(code || new URLSearchParams(location.search).get('room') || '').trim(); if(!normalRoomId){ updateNormalOnlineStatus('Missing room code.'); return; } normalNetworkRole='guest'; normalRoomPeer=new Peer(); const myColor=normalPlayerColor||'black'; normalRoomPeer.on('open',()=>{ normalRoomConn=normalRoomPeer.connect(normalRoomId,{reliable:true}); normalRoomConn.on('open',()=>{ normalRoomConn.send({type:'color-request', color:myColor}); render(); updateNormalOnlineStatus('Joined room. Waiting for host to start...'); }); normalRoomConn.on('data',msg=>{ if(msg?.type==='state') applyNormalRemoteState(msg.state); else if(msg?.type==='move-rejected') updateNormalOnlineStatus(`Move rejected: ${msg.reason||'not your turn.'}`); else if(msg?.type==='colors'){ normalRoomHostColor=msg.host; normalRoomGuestColor=msg.guest; normalPlayerColor=myColor; updateNormalOnlineStatus(`You are ${msg.guest}. Host is ${msg.host}. Waiting for game to start...`); } }); normalRoomConn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); }); normalRoomConn.on('close',()=>{ normalNetworkRole='offline'; render(); }); }); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
+    async function joinNormalRoom(code){ await loadNormalPeerJs(); normalRoomId=(code || new URLSearchParams(location.search).get('room') || '').trim(); if(!normalRoomId){ updateNormalOnlineStatus('Missing room code.'); return; } normalNetworkRole='guest'; normalRoomPeer=new Peer(); const myColor=normalPlayerColor||'black'; normalRoomPeer.on('open',()=>{ normalRoomConn=normalRoomPeer.connect(normalRoomId,{reliable:true}); normalRoomConn.on('open',()=>{ normalRoomConn.send({type:'color-request', color:myColor}); render(); updateNormalOnlineStatus('Joined room. Waiting for host to start...'); }); normalRoomConn.on('data',msg=>{
+          console.log('[GUEST] Received:', msg?.type);
+          if(msg?.type==='state') { applyNormalRemoteState(msg.state); console.log('[GUEST] Applied state, turn:', game.turn); }
+          else if(msg?.type==='move-rejected') updateNormalOnlineStatus(`Move rejected: ${msg.reason||'not your turn.'}`);
+          else if(msg?.type==='colors'){ normalRoomHostColor=msg.host; normalRoomGuestColor=msg.guest; normalPlayerColor=myColor; updateNormalOnlineStatus(`You are ${msg.guest}. Host is ${msg.host}. Waiting for game to start...`); }
+        }); }); normalRoomConn.on('error',err=>{ updateNormalOnlineStatus(`Connection error: ${err?.type||err?.message||err}`); }); normalRoomConn.on('close',()=>{ normalNetworkRole='offline'; render(); }); }); normalRoomPeer.on('error',err=>{ updateNormalOnlineStatus(`Room error: ${err.type||err.message}`); }); render(); }
     async function quickNormalMatch(){ await loadNormalPeerJs(); normalRoomId=NORMAL_QUICK_MATCH_ROOM; normalNetworkRole='host'; normalRoomPeer=new Peer(NORMAL_QUICK_MATCH_ROOM); normalRoomPeer.on('open',()=>{ render(); }); normalRoomPeer.on('connection',connectNormalHostConn); normalRoomPeer.on('error',err=>{ if(err.type==='unavailable-id') joinNormalRoom(NORMAL_QUICK_MATCH_ROOM); else updateNormalOnlineStatus(`Quick match error: ${err.type||err.message}`); }); render(); }
     function startNormalGame(mode){
       normalMode=mode;
